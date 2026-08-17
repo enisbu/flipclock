@@ -300,9 +300,8 @@
 	{spokenTime(time, settings.showSeconds)}{settings.subline === 'date' ? `, ${dateLabel}` : ''}
 </p>
 
-{#if showSettings}
-	<SettingsOverlay onclose={() => (showSettings = false)} />
-{/if}
+<!-- Mounted permanently so the drawer's exit slide can run; open is the state. -->
+<SettingsOverlay bind:open={showSettings} />
 
 <style>
 	.stage {
