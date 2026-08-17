@@ -23,6 +23,12 @@ export function readTime(use24h: boolean, now: Date = new Date()): ClockTime {
 	};
 }
 
+/** Remaining time of a countdown as two digit strings. 90 minutes stays '90'. */
+export function countdownParts(ms: number): { minutes: string; seconds: string } {
+	const total = Math.max(0, Math.round(ms / 1000));
+	return { minutes: pad(Math.floor(total / 60)), seconds: pad(total % 60) };
+}
+
 /** Readable form for screen readers. */
 export function spokenTime(time: ClockTime, showSeconds: boolean): string {
 	return showSeconds

@@ -84,6 +84,24 @@
 		--card-radius: clamp(0.6rem, 1.4vw, 1.5rem);
 		--gap: clamp(2px, 0.2vw, 4px);
 	}
+
+	/* Resolve the size tokens on the row itself, never at :root: a custom property
+	   is substituted in the scope that uses it, so only here can a row's own
+	   --row-units override (2 plates, 2.5 with the half size seconds) reach the
+	   formula. Shared by every face that lays plates in a row. */
+	.plate-row {
+		--row-gaps: calc(round(up, var(--row-units, 2), 1) - 1);
+		--card-w-base: min(
+			calc((var(--row-width) - var(--row-gaps) * var(--card-gap)) / var(--row-units, 2)),
+			var(--row-cap)
+		);
+		--card-h-base: calc(var(--card-w-base) * var(--plate-aspect));
+		--digit-size-base: calc(var(--card-w-base) * var(--digit-of-card));
+
+		--card-w: var(--card-w-base);
+		--card-h: var(--card-h-base);
+		--digit-size: var(--digit-size-base);
+	}
 }
 
 /* Wide and short: a desktop window or a 16:9 monitor, where a width derived plate is
@@ -135,6 +153,14 @@
 	font-weight: 600;
 	font-style: normal;
 	font-display: block;
+}
+
+/* Bridge into the shadcn token layer: the app is permanently dark (class on
+   <html>), and the controls in the settings sheet follow the active theme's
+   accent instead of the neutral preset. */
+.dark {
+	--primary: var(--accent);
+	--ring: var(--accent);
 }
 
 html,

@@ -22,3 +22,6 @@ Thumbs.db
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .claude/
+
+# Local design-review artifacts (screenshots, sidecar)
+.impeccable/

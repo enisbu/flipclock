@@ -5,22 +5,35 @@
 const STORAGE_KEY = 'flip-clock-settings';
 
 /** Bump when the stored shape changes, and add the matching migration below. */
-export const CURRENT_VERSION = 2;
+export const CURRENT_VERSION = 3;
 
 export const THEMES = ['default', 'warm', 'night', 'slate'] as const;
 export type Theme = (typeof THEMES)[number];
+
+export const FACES = ['clock', 'focus'] as const;
+export type Face = (typeof FACES)[number];
+
+/** What the line under the clock shows. */
+export const SUBLINES = ['off', 'date', 'text'] as const;
+export type Subline = (typeof SUBLINES)[number];
+
+/** Focus durations on offer, in minutes. No free input: presets keep it one tap. */
+export const FOCUS_PRESETS = [15, 25, 50, 90] as const;
 
 export type Settings = {
 	version: number;
 	use24h: boolean;
 	showSeconds: boolean;
-	showDate: boolean;
+	subline: Subline;
+	sublineText: string;
+	face: Face;
+	focusMinutes: number;
 	theme: Theme;
 	brightness: number;
 	/**
-	 * False until the one time "hold to customise" hint has been shown. Every
-	 * setting hides behind a long press with nothing on screen pointing at it, so
-	 * a first run shows the gesture once and then never again.
+	 * False until the one time gesture hint has been shown. Every setting hides
+	 * behind a long press with nothing on screen pointing at it, so a first run
+	 * shows the gesture once and then never again.
 	 */
 	hintSeen: boolean;
 };
@@ -29,7 +42,10 @@ export const DEFAULTS: Settings = {
 	version: CURRENT_VERSION,
 	use24h: true,
 	showSeconds: false,
-	showDate: false,
+	subline: 'off',
+	sublineText: '',
+	face: 'clock',
+	focusMinutes: 25,
 	theme: 'default',
 	brightness: 1,
 	hintSeen: false
@@ -48,7 +64,9 @@ const MIGRATIONS: Record<number, (data: Record<string, unknown>) => Record<strin
 	// hint is marked as already seen: they have used the app and a tip about a
 	// gesture they may already know would be noise. Only a fresh install, which
 	// has nothing stored at all, falls through to the default of false.
-	1: (data) => ({ ...data, hintSeen: true })
+	1: (data) => ({ ...data, hintSeen: true }),
+	// 2 to 3 folds the date toggle into the subline choice and adds the faces.
+	2: (data) => ({ ...data, subline: data.showDate === true ? 'date' : 'off' })
 };
 
 function clampBrightness(value: unknown): number {
@@ -56,16 +74,29 @@ function clampBrightness(value: unknown): number {
 	return Math.min(1, Math.max(0.2, value));
 }
 
+function clampFocusMinutes(value: unknown): number {
+	if (typeof value !== 'number' || Number.isNaN(value)) return DEFAULTS.focusMinutes;
+	return Math.min(180, Math.max(1, Math.round(value)));
+}
+
 function coerce(data: Record<string, unknown>): Settings {
 	// Spread the defaults LAST so a key introduced in a later version arrives with
 	// its default instead of undefined. Then validate the values that have a range.
 	const merged = { ...DEFAULTS, ...data, version: CURRENT_VERSION };
 	const theme = THEMES.includes(merged.theme as Theme) ? (merged.theme as Theme) : DEFAULTS.theme;
+	const subline = SUBLINES.includes(merged.subline as Subline)
+		? (merged.subline as Subline)
+		: DEFAULTS.subline;
+	const face = FACES.includes(merged.face as Face) ? (merged.face as Face) : DEFAULTS.face;
 	return {
 		version: CURRENT_VERSION,
 		use24h: typeof merged.use24h === 'boolean' ? merged.use24h : DEFAULTS.use24h,
 		showSeconds: typeof merged.showSeconds === 'boolean' ? merged.showSeconds : DEFAULTS.showSeconds,
-		showDate: typeof merged.showDate === 'boolean' ? merged.showDate : DEFAULTS.showDate,
+		subline,
+		sublineText:
+			typeof merged.sublineText === 'string' ? merged.sublineText.slice(0, 60) : DEFAULTS.sublineText,
+		face,
+		focusMinutes: clampFocusMinutes(merged.focusMinutes),
 		theme,
 		brightness: clampBrightness(merged.brightness),
 		hintSeen: typeof merged.hintSeen === 'boolean' ? merged.hintSeen : DEFAULTS.hintSeen
@@ -146,11 +177,32 @@ class SettingsStore {
 		this.#value.showSeconds = next;
 	}
 
-	get showDate() {
-		return this.#value.showDate;
+	get subline() {
+		return this.#value.subline;
 	}
-	set showDate(next: boolean) {
-		this.#value.showDate = next;
+	set subline(next: Subline) {
+		this.#value.subline = next;
+	}
+
+	get sublineText() {
+		return this.#value.sublineText;
+	}
+	set sublineText(next: string) {
+		this.#value.sublineText = next.slice(0, 60);
+	}
+
+	get face() {
+		return this.#value.face;
+	}
+	set face(next: Face) {
+		this.#value.face = next;
+	}
+
+	get focusMinutes() {
+		return this.#value.focusMinutes;
+	}
+	set focusMinutes(next: number) {
+		this.#value.focusMinutes = clampFocusMinutes(next);
 	}
 
 	get theme() {

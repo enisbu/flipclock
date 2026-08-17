@@ -11,11 +11,26 @@ describe('migrate', () => {
 
 	it('fills a missing key with the current default rather than undefined', () => {
 		const result = migrate({ version: 0, use24h: false });
-		expect(result.showDate).toBe(DEFAULTS.showDate);
+		expect(result.subline).toBe(DEFAULTS.subline);
 		expect(result.theme).toBe(DEFAULTS.theme);
 		expect(result.brightness).toBe(DEFAULTS.brightness);
+		expect(result.face).toBe(DEFAULTS.face);
+		expect(result.focusMinutes).toBe(DEFAULTS.focusMinutes);
 		// The stored value still wins over the default.
 		expect(result.use24h).toBe(false);
+	});
+
+	it('folds the old date toggle into the subline choice', () => {
+		expect(migrate({ version: 2, showDate: true }).subline).toBe('date');
+		expect(migrate({ version: 2, showDate: false }).subline).toBe('off');
+	});
+
+	it('rejects an unknown face or subline and clamps the focus duration', () => {
+		expect(migrate({ version: 3, face: 'weather' }).face).toBe(DEFAULTS.face);
+		expect(migrate({ version: 3, subline: 'marquee' }).subline).toBe(DEFAULTS.subline);
+		expect(migrate({ version: 3, focusMinutes: 0 }).focusMinutes).toBe(1);
+		expect(migrate({ version: 3, focusMinutes: 999 }).focusMinutes).toBe(180);
+		expect(migrate({ version: 3, sublineText: 'x'.repeat(200) }).sublineText).toHaveLength(60);
 	});
 
 	it('rejects an unknown theme and falls back to the default', () => {

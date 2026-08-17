@@ -6,11 +6,11 @@ A flip clock for an old phone parked in a holder on your desk, looked at and nev
 
 [Live](https://flip.enisdev.com) · [Android setup](docs/android-setup.md) · [Architecture](docs/architecture.md)
 
-At rest the screen carries the clock on black and nothing else. A tap toggles fullscreen. A press of about 600 ms opens the settings, and they leave on their own after six seconds without input.
+At rest the screen carries the clock on black and nothing else. A swipe slides to the second face, a focus timer on the same plates: tap starts and pauses it, a hairline under the plates carries the progress, the phone buzzes at zero. On the clock, a tap toggles fullscreen. A press of about 600 ms opens the settings, and they leave on their own.
 
-There are five settings and there will not be a sixth: 24-hour time, seconds, date, theme preset, brightness. They live in `localStorage` and nowhere else.
+The clock has five settings: 24-hour time, seconds, a subline (date or your own words), theme preset, brightness. The focus face adds only its duration. Everything lives in `localStorage` and nowhere else.
 
-Once the page has loaded, the network is never needed again. A service worker caches everything, so the clock runs in airplane mode for as long as the phone stays powered. No backend, no tracking, no runtime dependency. The digits render in the system font with tabular numerals, so nothing shifts as the numbers change.
+Once the page has loaded, the network is never needed again. A service worker caches everything, so the clock runs in airplane mode. No backend, no tracking, no CDN: every asset ships from the repo. Tailwind and shadcn-svelte for the UI; the digits are a 1.5 KB Roboto subset with equal widths, so nothing shifts as the numbers change.
 
 ## Setting up the phone
 

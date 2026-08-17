@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import * as Carousel from '$lib/components/ui/carousel';
+	import type { CarouselAPI } from '$lib/components/ui/carousel/context';
 	import FlipCard from '$lib/FlipCard.svelte';
+	import FocusFace from '$lib/FocusFace.svelte';
 	import SettingsOverlay from '$lib/SettingsOverlay.svelte';
 	import { readTime, spokenTime, startTicking } from '$lib/clock';
-	import { settings, requestPersistentStorage } from '$lib/settings.svelte';
+	import { settings, FACES, requestPersistentStorage } from '$lib/settings.svelte';
 	import { keepScreenAwake } from '$lib/wakelock';
 
 	/** OLED protection: every 3 minutes the clock moves by a few pixels. */
@@ -12,7 +15,7 @@
 
 	/** Press duration that opens the settings overlay. */
 	const LONG_PRESS_MS = 600;
-	/** Pointer travel that cancels the press, so a stray drag does nothing. */
+	/** Pointer travel that cancels the press and swallows the trailing tap. */
 	const MOVE_TOLERANCE_PX = 10;
 
 	/** How long the one time gesture hint stays on screen before it fades out. */
@@ -24,6 +27,16 @@
 	let shiftX = $state(0);
 	let shiftY = $state(0);
 	let showSettings = $state(false);
+	let focusFace: FocusFace | undefined = $state();
+
+	// The carousel is Embla (shadcn-svelte). It owns the drag physics; the page
+	// only keeps the selected snap and the settings value in sync, both ways.
+	let api: CarouselAPI | undefined = $state();
+	const faceIndex = $derived(FACES.indexOf(settings.face));
+	const reduced =
+		typeof window !== 'undefined' &&
+		window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 	// The one time hint. Mounted only on a first run and removed for good after it
 	// fades, so at rest the screen is the clock on black and nothing else.
 	let hintVisible = $state(false);
@@ -31,8 +44,10 @@
 
 	let pressTimer: ReturnType<typeof setTimeout> | undefined;
 	let pressOrigin: { x: number; y: number } | null = null;
-	// Set once the long press fires, so the following click does not also toggle fullscreen.
+	// Set once the long press fires or the pointer travelled, so the trailing
+	// click neither reopens fullscreen nor toggles the timer after a swipe.
 	let longPressFired = false;
+	let moved = false;
 
 	settings.persist();
 
@@ -51,14 +66,34 @@
 		return dateFormat.format(new Date());
 	});
 
+	const sublineLabel = $derived(
+		settings.subline === 'date'
+			? dateLabel
+			: settings.subline === 'text'
+				? settings.sublineText.trim()
+				: ''
+	);
+
+	function onApi(next: CarouselAPI | undefined) {
+		api = next;
+		next?.on('select', () => {
+			settings.face = FACES[next.selectedScrollSnap()] ?? 'clock';
+		});
+	}
+
+	// The other direction: a keyboard arrow or a stored value moves the deck.
+	$effect(() => {
+		const index = faceIndex;
+		if (api && api.selectedScrollSnap() !== index) api.scrollTo(index, reduced);
+	});
+
 	$effect(() => {
 		requestPersistentStorage();
 	});
 
-	// First run only: show the gesture once, then write the flag so it never returns.
-	// Everything about the app hides behind a long press and nothing on the naked
-	// surface hints at it, which is why a first time viewer sees only a clock and
-	// concludes there is nothing else there.
+	// First run only: show the gestures once, then write the flag so it never
+	// returns. Everything hides behind gestures and nothing on the naked surface
+	// hints at them, which is why a first time viewer sees only a clock.
 	//
 	// The flag is read untracked on purpose. Reading it reactively would make this
 	// effect depend on the very value it writes below, so the write would tear the
@@ -138,6 +173,7 @@
 	function onPointerDown(event: PointerEvent) {
 		if (showSettings) return;
 		longPressFired = false;
+		moved = false;
 		pressOrigin = { x: event.clientX, y: event.clientY };
 		clearTimeout(pressTimer);
 		pressTimer = setTimeout(() => {
@@ -151,7 +187,12 @@
 		if (!pressOrigin) return;
 		const dx = Math.abs(event.clientX - pressOrigin.x);
 		const dy = Math.abs(event.clientY - pressOrigin.y);
-		if (dx > MOVE_TOLERANCE_PX || dy > MOVE_TOLERANCE_PX) cancelPress();
+		if (dx > MOVE_TOLERANCE_PX || dy > MOVE_TOLERANCE_PX) {
+			// The pointer became a swipe: Embla takes over, the press and the
+			// trailing click are both off the table.
+			moved = true;
+			cancelPress();
+		}
 	}
 
 	// Fullscreen needs a user gesture, hence the tap on the whole surface.
@@ -166,61 +207,97 @@
 
 	function onStageClick() {
 		cancelPress();
-		// The long press already opened the overlay, so swallow its trailing click.
-		if (longPressFired) {
+		// A finished long press or swipe already did its work; swallow the click.
+		if (longPressFired || moved) {
 			longPressFired = false;
+			moved = false;
 			return;
 		}
-		if (!showSettings) toggleFullscreen();
+		if (showSettings) return;
+		// The tap is the face's main action: fullscreen on the clock, start and
+		// pause on the focus timer.
+		if (settings.face === 'focus') {
+			focusFace?.toggle();
+		} else {
+			toggleFullscreen();
+		}
+	}
+
+	function onStageKeydown(event: KeyboardEvent) {
+		if (showSettings) return;
+		if (event.key === 'ArrowRight') settings.face = 'focus';
+		if (event.key === 'ArrowLeft') settings.face = 'clock';
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			if (settings.face === 'focus') focusFace?.toggle();
+			else toggleFullscreen();
+		}
 	}
 </script>
+
+<svelte:window on:keydown={onStageKeydown} />
 
 <svelte:head>
 	<title>Flip Clock</title>
 </svelte:head>
 
-<div class="stage" style="--brightness: {settings.brightness}">
-	<!-- The full surface hit target: it carries both the tap for fullscreen and the
-	     long press for the overlay, and stays a real button for keyboard users. -->
-	<button
-		class="hit"
-		type="button"
-		onclick={onStageClick}
-		onpointerdown={onPointerDown}
-		onpointermove={onPointerMove}
-		onpointerup={cancelPress}
-		onpointercancel={cancelPress}
-		onpointerleave={cancelPress}
-		aria-label="Toggle fullscreen"
-	></button>
+<!-- The whole stage is one gesture surface: tap for the face's main action,
+     long press for settings, drag for the carousel. Keyboard runs over the
+     window handler above, so no focusable control has to sit on the surface. -->
+<div
+	class="stage"
+	style="--brightness: {settings.brightness}"
+	onpointerdown={onPointerDown}
+	onpointermove={onPointerMove}
+	onpointerup={cancelPress}
+	onpointercancel={cancelPress}
+	onclick={onStageClick}
+	role="presentation"
+>
+	<!-- The pixel shift lives on its own wrapper so its slow transition never
+	     fights the carousel transform below it. -->
+	<div class="shift" style="transform: translate({shiftX}px, {shiftY}px)">
+		<Carousel.Root
+			class="h-full"
+			opts={{ duration: reduced ? 0 : 20, startIndex: faceIndex }}
+			setApi={onApi}
+		>
+			<Carousel.Content class="ms-0 h-full">
+				<Carousel.Item class="face h-full basis-full ps-0">
+					<div class="clock">
+						<div class="row plate-row" class:row--seconds={settings.showSeconds}>
+							<FlipCard value={time.hours} />
+							<FlipCard value={time.minutes} />
+							{#if settings.showSeconds}
+								<div class="seconds">
+									<FlipCard value={time.seconds} />
+								</div>
+							{/if}
+						</div>
+						{#if sublineLabel}
+							<p class="subline" aria-hidden="true">{sublineLabel}</p>
+						{/if}
+					</div>
+				</Carousel.Item>
 
-	<div class="clock" style="transform: translate({shiftX}px, {shiftY}px)">
-		<!-- The row tells the size tokens how many plate widths it has to carry, so the
-		     landscape branch in app.css can divide the viewport instead of assuming two
-		     plates. The seconds plate is half size, hence 2.5 rather than 3. -->
-		<div class="row" class:row--seconds={settings.showSeconds}>
-			<FlipCard value={time.hours} />
-			<FlipCard value={time.minutes} />
-			{#if settings.showSeconds}
-				<div class="seconds">
-					<FlipCard value={time.seconds} />
-				</div>
-			{/if}
-		</div>
-		{#if settings.showDate}
-			<p class="date" aria-hidden="true">{dateLabel}</p>
-		{/if}
+				<Carousel.Item class="face h-full basis-full ps-0">
+					<FocusFace bind:this={focusFace} />
+				</Carousel.Item>
+			</Carousel.Content>
+		</Carousel.Root>
 	</div>
 
 	{#if hintMounted}
 		<!-- First run only, then gone for good. Not a control and not focusable: it is
 		     a line of text that fades out on its own and leaves the surface empty. -->
-		<p class="hint" class:hint--on={hintVisible} aria-hidden="true">hold for settings</p>
+		<p class="hint" class:hint--on={hintVisible} aria-hidden="true">
+			hold for settings · swipe for focus
+		</p>
 	{/if}
 </div>
 
 <p class="sr-only" aria-live="polite">
-	{spokenTime(time, settings.showSeconds)}{settings.showDate ? `, ${dateLabel}` : ''}
+	{spokenTime(time, settings.showSeconds)}{settings.subline === 'date' ? `, ${dateLabel}` : ''}
 </p>
 
 {#if showSettings}
@@ -232,37 +309,37 @@
 		position: relative;
 		width: 100%;
 		height: 100%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
+		overflow: hidden;
 		background: var(--bg);
 		/* Brightness is a screen side dim: the web cannot touch the device backlight. */
 		opacity: var(--brightness, 1);
 		-webkit-tap-highlight-color: transparent;
-	}
-
-	/* The keyboard and click path for fullscreen, stretched over the whole stage.
-	   It carries no visuals, so the surface stays naked. */
-	.hit {
-		position: absolute;
-		inset: 0;
-		z-index: 1;
-		border: 0;
-		padding: 0;
-		background: transparent;
 		cursor: pointer;
 	}
 
+	.shift {
+		position: absolute;
+		inset: 0;
+		/* The pixel shift runs slowly enough not to be noticed. */
+		transition: transform 8s linear;
+	}
+
+	/* The Embla viewport ships with overflow-hidden but no height of its own. */
+	.stage :global([data-slot='carousel-content']) {
+		height: 100%;
+	}
+
+	.stage :global(.face) {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
 	.clock {
-		position: relative;
-		z-index: 2;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		gap: var(--card-gap);
-		/* The pixel shift runs slowly enough not to be noticed. */
-		transition: transform 8s linear;
-		pointer-events: none;
 	}
 
 	/* Portrait stacks the cards so each one gets the full viewport width. */
@@ -293,7 +370,7 @@
 		color: var(--seconds-digit);
 	}
 
-	.date {
+	.subline {
 		/* On top of the flex gap, so the line sits clearly apart from the plates and
 		   reads as a caption, not as a third row of the clock. */
 		margin: var(--card-gap) 0 0;
@@ -303,12 +380,18 @@
 		letter-spacing: 0.22em;
 		opacity: 0.6;
 		text-transform: uppercase;
+		/* A 60 character line at this tracking outgrows a phone; it stays one
+		   quiet line and ellipsizes instead of wrapping toward the hint zone. */
+		max-width: 92vw;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
-	/* The one time gesture hint. Deliberately quiet: small, letterspaced, parked
-	   near the bottom edge and well clear of the plates, but still above the 4.5:1
-	   contrast floor, because it is the one text a first time viewer must read. It
-	   fades in, holds, fades out and unmounts, so it cannot become permanent. */
+	/* The one time gesture hint. Deliberately quiet: small, parked near the bottom
+	   edge and well clear of the plates, but still above the 4.5:1 contrast floor,
+	   because it is the one text a first time viewer must read. It fades in, holds,
+	   fades out and unmounts, so it cannot become permanent. */
 	.hint {
 		position: absolute;
 		bottom: max(env(safe-area-inset-bottom), 6%);
@@ -316,10 +399,11 @@
 		z-index: 3;
 		margin: 0;
 		color: var(--digit-color);
-		font-size: clamp(0.75rem, 2.6vmin, 1rem);
+		/* Distinct from the subline on purpose: lowercase, tight, smaller. An
+		   instruction must not wear the clothes of a permanent caption. */
+		font-size: clamp(0.6875rem, 2.2vmin, 0.875rem);
 		font-weight: 500;
-		letter-spacing: 0.18em;
-		text-transform: uppercase;
+		letter-spacing: 0.02em;
 		white-space: nowrap;
 		pointer-events: none;
 		opacity: 0;
@@ -332,8 +416,8 @@
 	}
 
 	/* Anything not clearly taller than it is wide reads left to right. Matched to
-	   the same aspect-ratio breakpoint that picks the plate size in app.css, so a
-	   near square viewport cannot end up with a stack taller than the screen. */
+	   the same aspect-ratio breakpoint that picks the plate size in app.css, where
+	   the shared .plate-row rule resolves the size tokens. */
 	@media (min-aspect-ratio: 10 / 16) {
 		.row {
 			flex-direction: row;
@@ -345,30 +429,10 @@
 		.row--seconds {
 			--row-units: 2.5;
 		}
-
-		/* Resolve the size tokens HERE rather than at :root, because only here is
-		   --row-units final. app.css supplies the inputs, the row does the division. */
-		.row {
-			/* One gap between neighbours, so one less than the number of plates: 2 without
-			   seconds, 3 with them. Declared here and not at :root for the same reason as
-			   the size tokens: at :root it would resolve against the default --row-units
-			   and never see the override above. */
-			--row-gaps: calc(round(up, var(--row-units), 1) - 1);
-			--card-w-base: min(
-				calc((var(--row-width) - var(--row-gaps) * var(--card-gap)) / var(--row-units)),
-				var(--row-cap)
-			);
-			--card-h-base: calc(var(--card-w-base) * var(--plate-aspect));
-			--digit-size-base: calc(var(--card-w-base) * var(--digit-of-card));
-
-			--card-w: var(--card-w-base);
-			--card-h: var(--card-h-base);
-			--digit-size: var(--digit-size-base);
-		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.clock {
+		.shift {
 			transition: none;
 		}
 	}

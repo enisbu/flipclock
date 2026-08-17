@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { nextDelay, readTime, spokenTime, startTicking, tickStep } from './clock';
+import { countdownParts, nextDelay, readTime, spokenTime, startTicking, tickStep } from './clock';
 
 describe('readTime', () => {
 	it('pads every field to two digits', () => {
@@ -109,5 +109,18 @@ describe('startTicking', () => {
 		stop();
 		vi.advanceTimersByTime(10_000);
 		expect(onTick).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('countdownParts', () => {
+	it('formats a countdown as two digit strings and keeps long minutes intact', () => {
+		expect(countdownParts(25 * 60_000)).toEqual({ minutes: '25', seconds: '00' });
+		expect(countdownParts(90 * 60_000)).toEqual({ minutes: '90', seconds: '00' });
+		expect(countdownParts(61_000)).toEqual({ minutes: '01', seconds: '01' });
+	});
+
+	it('never goes below zero', () => {
+		expect(countdownParts(0)).toEqual({ minutes: '00', seconds: '00' });
+		expect(countdownParts(-5000)).toEqual({ minutes: '00', seconds: '00' });
 	});
 });

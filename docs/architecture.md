@@ -2,7 +2,7 @@
 
 This is the file to read before touching `src/`. It covers the decisions that reading the code will not explain: not what the code does, but why it does it that way. Where a choice looks wrong at first glance, the reasoning is spelled out, because that is the part a reader cannot reconstruct.
 
-The app is deliberately small: nine source files, zero runtime dependencies, one route. Every section below is a place where a plausible alternative was rejected for a concrete reason.
+The app is deliberately small: one route, a handful of source files, Tailwind v4 and shadcn-svelte for the settings controls, nothing else. Every section below is a place where a plausible alternative was rejected for a concrete reason.
 
 ## The drift free tick
 
@@ -17,6 +17,12 @@ The 20 ms is a safety margin. Timers are allowed to fire a little early, and a t
 The same design solves the background problem for free. `readTime()` reads `Date` on every tick, so the digits always show the real time, never a count of how many ticks have run. When the phone comes back from sleep, the clock shows the correct time on the next tick instead of firing a salvo of single step flips to catch up. `+page.svelte` adds a `visibilitychange` listener that reads the time immediately on return, so the correction is instant rather than up to a minute late.
 
 The step itself is either one second or one full minute, depending on whether seconds are shown. With seconds off, the app wakes up sixty times less often, which matters on a device running this for eight hours a day.
+
+## Two faces, one carousel
+
+The clock and the focus timer sit side by side in an Embla carousel (the shadcn-svelte component). Embla owns the drag physics, the page only keeps the selected snap and the stored face in sync. The gesture grammar stays fixed across faces: swipe switches, long press opens settings, tap is the face's main action, fullscreen on the clock and start or pause on the timer. The countdown is drift free like the tick: every step recomputes the remainder from Date, and `visibilitychange` snaps it back after a background stretch. At zero the phone vibrates, the plates pulse once, and the progress line keeps breathing until the next tap, so the finish survives the moment of finishing. The line under the plates is also the face's standing mark: the clock never carries one, so remaining time cannot be misread as a time of day.
+
+Two limits, both deliberate: picking a duration preset resets the session (the preset is the reset control), and the session lives in the component, so a reload starts it fresh. No statistics, no history: the timer is a timer.
 
 ## The four layer flip card
 
@@ -114,7 +120,7 @@ There is no color picker, and not only because the product rules forbid visible 
 
 Flip speed and font are global, not theme tokens. They are not a theme concern, and putting them in the token set would invite presets that disagree about motion.
 
-The digits render in the system sans stack with `font-variant-numeric: tabular-nums`. Tabular figures give every digit the same advance width, so the pair never shifts sideways as the minute changes. No font ships with the app: on the Android phone this is built for, the stack resolves to Roboto, and a clock face has no business downloading type. The plate ratios in the CSS (`--plate-aspect`, `--digit-of-card`) are optical choices verified against a rendered screenshot, plus one small `translate` nudge on the digit container: flex centres the line box, not the ink, and the nudge puts the optical middle of the pair back on the seam.
+The digits render in `static/digits.woff2`: Roboto at weight 600, subset to the ten digits, 1.5 KB, cached like every other asset. Self-hosting makes the rendering predictable; on the target phone it is the face the system stack resolves to anyway, and that stack stays as fallback. All ten digits share one advance width, so the pair never shifts as the minute changes. The plate ratios (`--plate-aspect`, `--digit-of-card`) are optical choices checked against a screenshot, plus a small `translate` nudge: flex centres the line box, not the ink.
 
 Brightness is applied as `opacity` on the stage. Be clear about what that is: a screen side dim, not backlight control. The web cannot touch the device backlight, and the device brightness setting remains the real control.
 
@@ -150,7 +156,7 @@ There is no Playwright, no component test and no visual regression suite. For a 
 
 ## The refusal list
 
-Things this app will not become, so nobody has to relitigate them in a pull request: timers, alarms, weather, calendar, music controls, accounts, sync, a color picker, any permanently visible control, any runtime dependency, any network call after the first load.
+Things this app will not become, so nobody has to relitigate them in a pull request: alarms, weather, calendar, music controls, accounts, sync, a color picker, any permanently visible control, any network call after the first load, any dependency beyond the established stack.
 
 The settings that exist are the complete set: 12 or 24 hour, seconds on or off, date on or off, theme preset, brightness.
 

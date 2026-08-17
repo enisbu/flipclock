@@ -1,17 +1,21 @@
 # Flipclock
 
 A flip clock webapp for a phone mounted in a holder on a desk: looked at, never
-operated. SvelteKit 2, Svelte 5 in forced runes mode, TypeScript, zero runtime
-dependencies, Node 22 LTS. Local first: no backend, no API, no tracking, no CDN
-font, and no network at all after the first load. At rest the screen shows only
+operated. Two faces in a swipe carousel: the clock and a focus timer on the
+same plates. SvelteKit 2, Svelte 5 in forced runes mode, TypeScript, Tailwind
+v4, shadcn-svelte, Node 22 LTS. Local first: no backend, no API, no tracking,
+no CDN, and no network at all after the first load. At rest the screen shows only
 the clock on black. A tap toggles fullscreen, a long press of about 600 ms opens
 a settings overlay that dismisses itself. There is no visible control.
 
 ## Source files
 
-- src/routes/+page.svelte: the clock itself. Composes the cards, runs the tick,
-  wake lock, OLED pixel shift, theme attribute, tap and long press handling, and
-  the one time hint. Sets --row-units on .row, which is what sizes the plates.
+- src/routes/+page.svelte: the stage. Embla carousel over both faces, tick,
+  wake lock, OLED pixel shift, theme attribute, tap and long press handling,
+  the subline and the one time hint.
+- src/lib/FocusFace.svelte: the focus timer. Drift free countdown on the same
+  plates, tap starts and pauses (wired by the page), progress hairline,
+  vibration at zero. Duration comes from the settings presets.
 - src/routes/+layout.svelte: shell. Imports app.css, links icon and manifest.
 - src/routes/+layout.ts: prerender = true and ssr = false, so the build is a
   static shell despite adapter-node.
@@ -22,20 +26,26 @@ a settings overlay that dismisses itself. There is no visible control.
 - src/lib/wakelock.ts: screen wake lock with re acquire on visibilitychange.
 - src/lib/FlipCard.svelte: one two digit card, four layers, CSS keyframes.
   Honors prefers-reduced-motion by jumping instead of flipping.
-- src/lib/SettingsOverlay.svelte: the long press overlay. Focus trap, Escape to
-  close, auto dismiss after idle, closes on an outside tap.
+- src/lib/SettingsOverlay.svelte: the long press overlay. shadcn-svelte
+  controls in a bespoke container: focus trap, Escape, idle auto dismiss,
+  bottom sheet on phones, centered panel on wide screens, two columns when
+  short.
+- src/lib/components/ui/, src/lib/utils.ts, src/routes/layout.css,
+  components.json: the shadcn-svelte layer.
 - src/service-worker.ts: caches [...build, ...files] plus the prerendered shell.
   Cache first for assets, network with cache fallback otherwise. No skipWaiting.
 - src/app.css: size token inputs, theme presets via [data-theme], aspect ratio
-  media queries, sr-only. Digits use the system sans stack with tabular-nums,
-  no bundled font.
+  media queries, sr-only, the digit @font-face.
+- static/digits.woff2: Roboto at 600, digits only, 1.5 KB, equal advances.
 - src/lib/clock.test.ts, src/lib/settings.test.ts: vitest, pure logic only.
 
 ## Settings
 
 localStorage key: flip-clock-settings. One JSON object with a version integer.
-Keys: use24h (boolean), showSeconds (boolean), showDate (boolean), theme
-('default' | 'warm' | 'night' | 'slate'), brightness (number, 0.2 to 1).
+Keys: use24h (boolean), showSeconds (boolean), subline ('off' | 'date' |
+'text'), sublineText (string, max 60), face ('clock' | 'focus'), focusMinutes
+(number, 1 to 180), theme ('default' | 'warm' | 'night' | 'slate'),
+brightness (number, 0.2 to 1).
 The list is closed. No timers, alarms, weather, calendar, music, accounts, sync
 or color pickers.
 
