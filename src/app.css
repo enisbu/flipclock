@@ -1,18 +1,40 @@
-/* Global base. The sizes hang off viewport units so the clock fills any phone
-   without a forest of media queries. */
+/* Global base. The plate sizes hang off the viewport WIDTH alone.
+
+   Why width and never height: entering fullscreen on Android hides the URL bar
+   and the gesture bar, which grows the viewport height by 20 to 80px. Anything
+   derived from a height unit then recomputes and the whole clock visibly jumps
+   under the thumb that just tapped it. vh, dvh, svh and lvh all move by the same
+   amount across that transition, so picking a different height unit fixes
+   nothing. The width does not move, so the width is the basis.
+
+   The layout branch is chosen by aspect-ratio rather than by orientation, so a
+   viewport that is landscape-ish but not wide (a tablet, a split screen, a
+   desktop window) still gets the side by side row instead of a stack that is
+   taller than the screen. */
 
 :root {
-	/* Portrait: the width is the limit, cards sit on top of each other. */
-	--card-w-base: clamp(9rem, 76vmin, 26rem);
-	--card-h-base: clamp(8rem, 70vmin, 24rem);
-	--digit-size-base: clamp(6rem, 52vmin, 17rem);
+	/* A plate is wider than it is tall, like the real thing: two digits sit side by
+	   side on one flap. 0.59 is not a taste number, it falls out of the face. A pair
+	   of digits is 2 * 0.803em wide and 0.712em tall, so asking the pair to span 88%
+	   of the plate width and 66% of its height fixes the plate aspect at
+	   0.712 * 0.88 / (2 * 0.803) / 0.66 = 0.59. */
+	--plate-aspect: 0.59;
+	/* 88% of the plate width divided by the 1.606em a digit pair occupies. */
+	--digit-of-card: 0.548;
+
+	/* Stacked layout: one plate per row, so the plate may take nearly the full width.
+	   Two plates plus a gap need 2 * 0.94 * 0.59 = 1.11 times the width in height,
+	   which the aspect-ratio branch below guarantees. */
+	--card-w-base: min(94vw, 34rem);
+	--card-h-base: calc(var(--card-w-base) * var(--plate-aspect));
+	--digit-size-base: calc(var(--card-w-base) * var(--digit-of-card));
 
 	--card-w: var(--card-w-base);
 	--card-h: var(--card-h-base);
 	--digit-size: var(--digit-size-base);
 
-	--card-gap: clamp(0.5rem, 2.5vmin, 1.5rem);
-	--card-radius: clamp(1rem, 4vmin, 2.5rem);
+	--card-gap: clamp(0.6rem, 3vw, 1.6rem);
+	--card-radius: clamp(0.5rem, 1.6vw, 1rem);
 
 	/* Theme surface. The default is true OLED black, see below. */
 	--bg: #000;
@@ -20,22 +42,54 @@
 	--digit-color: #f2f2f2;
 	--accent: #539bf5;
 
-	--gap: 3px;
+	/* The axis slot. Wide enough to read as a mechanical seam, not a hairline. */
+	--gap: clamp(3px, 0.9vw, 8px);
 	--flip-ms: 700ms;
 
 	color-scheme: dark;
 }
 
-/* Landscape: vmin follows the height here, so two or three cards side by side
-   would each claim 76vh of horizontal room and overflow a 16:9 screen. The width
-   is therefore measured against vw, the height against dvh, which also holds up
-   in a normal browser tab where the toolbar eats into the viewport. */
-@media (orientation: landscape) {
+/* Row layout: everything not clearly taller than it is wide, which is a landscape
+   phone but also a tablet, a split screen and any desktop window. Two plates plus
+   the gap between them share the width, hence roughly 44vw each. Going through the
+   aspect ratio rather than through orientation is what keeps a near square viewport
+   from stacking a column that is taller than the screen. */
+@media (min-aspect-ratio: 10 / 16) {
 	:root {
-		--card-w-base: clamp(6rem, 30vw, 20rem);
-		--card-h-base: clamp(6rem, 74dvh, 22rem);
-		--digit-size-base: clamp(4rem, 52dvh, 16rem);
+		/* Two plates plus the gap between them share the width. 44vw each leaves the
+		   gap a visible 5vw, so the pair reads as two plates on a board rather than
+		   as one wide slab with a line down the middle. */
+		--card-w-base: min(44vw, 30rem);
+
+		--card-gap: clamp(0.8rem, 4vw, 3rem);
+		--card-radius: clamp(0.4rem, 0.8vw, 1rem);
+		--gap: clamp(3px, 0.45vw, 8px);
 	}
+}
+
+/* Wide and short: a desktop window or a 16:9 monitor, where 45vw of plate is
+   taller than the screen. A phone in landscape is about 2.2 wide, so the cap only
+   engages past 2.5 and no device that hides browser chrome on a tap ever reaches
+   this branch. That keeps the fullscreen jump fixed where it matters while still
+   fitting a letterbox window. */
+@media (min-aspect-ratio: 5 / 2) {
+	:root {
+		--card-w-base: min(46vw, 130vmin, 30rem);
+	}
+}
+
+/* The bundled plate face. Archivo instanced at Expanded Black and subset to the
+   digits, the colon and the space: 1.3 KB, no CDN, cached by the service worker
+   like every other static file. Every digit carries the same advance and its ink
+   is centred inside that advance, which is what CSS tabular-nums cannot do.
+   font-display: block, because a flip clock briefly rendering in a fallback face
+   and then reflowing is worse than a blank plate for a few frames. */
+@font-face {
+	font-family: 'Split Flap';
+	src: url('/split-flap.woff2') format('woff2');
+	font-weight: 400;
+	font-style: normal;
+	font-display: block;
 }
 
 /* Curated theme presets. No color picker: a handful of sets that are known to
