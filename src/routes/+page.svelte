@@ -242,8 +242,10 @@
 		text-transform: uppercase;
 	}
 
-	/* Landscape uses the wide axis: HH:MM reads left to right. */
-	@media (orientation: landscape) {
+	/* Anything not clearly taller than it is wide reads left to right. Matched to
+	   the same aspect-ratio breakpoint that picks the plate size in app.css, so a
+	   near square viewport cannot end up with a stack taller than the screen. */
+	@media (min-aspect-ratio: 10 / 16) {
 		.row {
 			flex-direction: row;
 			align-items: center;
