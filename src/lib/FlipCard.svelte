@@ -74,26 +74,22 @@
 		position: relative;
 		width: var(--card-w);
 		height: var(--card-h);
-		/* The bundled plate face. Its digits all carry the same advance and their ink is
-		   centred inside that advance, which is what CSS tabular-nums cannot do. Its
-		   vertical metrics are flattened onto the digit ink, so line-height 1 centres
-		   the ink in the line box by construction instead of by a nudge.
-
-		   The second entry is the metric matched fallback declared in app.css, not the
-		   raw monospace stack: it carries the same advance and line box, so the plate
-		   geometry survives the file failing to load. */
-		font-family: 'Split Flap', 'Split Flap Fallback', ui-monospace, monospace;
+		/* The bundled digit face first; the system grotesk stack is the fallback and
+		   resolves to the same family on the Android target anyway. */
+		font-family: 'Clock Digits', ui-sans-serif, system-ui, sans-serif;
 		font-size: var(--digit-size);
-		font-weight: 400;
+		font-weight: 600;
 		line-height: 1;
 		/* No negative tracking. CSS applies letter-spacing after the final glyph too,
 		   so any non zero value drags a centred pair off centre by half of it. */
 		letter-spacing: 0;
-		/* Holds the fallback stack in line if the bundled face ever fails to load. */
+		/* Fixed digit advance, otherwise the layout shifts on every change. */
 		font-variant-numeric: tabular-nums;
 		perspective: 90vmin;
 	}
 
+	/* Flat surfaces on purpose: one plate color, one digit color, a hairline seam.
+	   Depth exists only while a flap moves, carried by the shade overlays below. */
 	.half,
 	.flap {
 		position: absolute;
@@ -104,77 +100,30 @@
 		background: var(--card-bg);
 	}
 
-	/* The plate faces. A shallow gradient reads as a lit plate rather than a flat
-	   rectangle, and the inset shadow under the seam is what the upper plate casts
-	   onto the lower one. That is where the sense of depth comes from. The tints are
-	   mixed out of --card-bg rather than hard coded, so the theme presets keep
-	   working: a warm plate stays warm, it does not turn grey. */
 	.half--top,
 	.flap--top {
 		top: 0;
 		border-radius: var(--card-radius) var(--card-radius) 0 0;
-		background: linear-gradient(
-			to bottom,
-			color-mix(in srgb, var(--card-bg) 88%, #fff) 0%,
-			var(--card-bg) 58%,
-			color-mix(in srgb, var(--card-bg) 72%, #000) 100%
-		);
-		box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
 	}
 
 	.half--bottom,
 	.flap--bottom {
 		bottom: 0;
 		border-radius: 0 0 var(--card-radius) var(--card-radius);
-		background: linear-gradient(
-			to bottom,
-			color-mix(in srgb, var(--card-bg) 78%, #000) 0%,
-			var(--card-bg) 42%,
-			color-mix(in srgb, var(--card-bg) 92%, #fff) 100%
-		);
-		/* The cast shadow the upper plate throws onto the lower one. */
-		box-shadow:
-			inset 0 4px 9px rgb(0 0 0 / 0.85),
-			inset 0 -1px 0 rgb(255 255 255 / 0.05);
 	}
 
-	/* The axis slot: the black channel the plates hang in. */
+	/* The seam: the page background showing through between the halves. */
 	.gap {
 		position: absolute;
 		top: calc(50% - (var(--gap) / 2));
 		left: 0;
 		width: 100%;
 		height: var(--gap);
-		background: #000;
-		z-index: 3;
-	}
-
-	/* The two pins the plates turn on, one at each end of the axis. They ride in the
-	   slot itself, which is what makes the plate read as a mechanism rather than as
-	   two rectangles that happen to touch. */
-	.gap::before,
-	.gap::after {
-		content: '';
-		position: absolute;
-		top: 50%;
-		width: calc(var(--gap) * 1.7);
-		height: calc(var(--gap) * 1.7);
-		border-radius: 50%;
-		background: color-mix(in srgb, var(--card-bg) 55%, #fff);
-		transform: translateY(-50%);
-	}
-
-	.gap::before {
-		left: calc(var(--gap) * -0.85);
-	}
-
-	.gap::after {
-		right: calc(var(--gap) * -0.85);
 	}
 
 	/* Double height inside the clipped container: the digit is centered in the full
 	   card space, only the respective half stays visible. The box is 200% of the half
-	   plus the slot, which is the full card height, so the axis slot does not push the
+	   plus the seam, which is the full card height, so the seam does not push the
 	   glyph off the card centre by half its own width. */
 	.digits {
 		position: absolute;
@@ -185,6 +134,10 @@
 		align-items: center;
 		justify-content: center;
 		color: var(--digit-color);
+		/* Flex centres the line box, not the ink: with line-height 1 the digits sit on
+		   a baseline above the box centre by roughly half the descender. The nudge puts
+		   the optical middle of the pair back on the seam; checked against a screenshot. */
+		translate: 0 0.012em;
 	}
 
 	.half--top .digits,
@@ -214,28 +167,19 @@
 		animation: flip-bottom var(--flip-ms) cubic-bezier(0.4, 0, 0.2, 1) forwards;
 	}
 
-	/* Darkens the flap that rotates away, which creates the sense of depth.
-
-	   The static faces carry a gradient now, so a flat black wash no longer matches
-	   them: the falling half went uniformly dark while the plate it left behind was
-	   still lit from the top, and the two read as different materials. The shade is
-	   therefore a gradient of the same shape as the face under it, strongest at the
-	   hinge where the plate turns away from the light and weakest at the free edge. */
+	/* A flat black wash on the moving flap only. The falling half turns away from
+	   the viewer and darkens, the arriving half lights up. This is the entire depth
+	   model: the resting plate stays perfectly flat. */
 	.shade {
 		position: absolute;
 		inset: 0;
 		z-index: 3;
-		background: linear-gradient(to bottom, rgb(0 0 0 / 0.35) 0%, rgb(0 0 0 / 1) 100%);
+		background: #000;
 		pointer-events: none;
 		animation: shade-top var(--flip-ms) linear forwards;
 	}
 
-	/* The incoming half arrives out of the dark and lights up as it reaches the
-	   viewing plane, which is the same movement in reverse. Without it the bottom
-	   flap appears at full brightness the instant it becomes visible and the flip
-	   loses its second half. */
 	.shade--bottom {
-		background: linear-gradient(to bottom, rgb(0 0 0 / 1) 0%, rgb(0 0 0 / 0.35) 100%);
 		animation-name: shade-bottom;
 	}
 
@@ -258,25 +202,19 @@
 	}
 
 	/* Both halves are only ever visible for half of their arc, so the shading runs
-	   over that half and holds. The top flap darkens from lit to fully turned away,
-	   the bottom flap does the reverse as it swings into the plane. */
+	   over that half and holds. The top flap darkens as it turns away, the bottom
+	   flap does the reverse as it swings into the plane. */
 	@keyframes shade-top {
 		0% {
 			opacity: 0;
 		}
-		50% {
-			opacity: 0.55;
-		}
 		100% {
-			opacity: 0.72;
+			opacity: 0.55;
 		}
 	}
 
 	@keyframes shade-bottom {
 		0% {
-			opacity: 0.72;
-		}
-		50% {
 			opacity: 0.55;
 		}
 		100% {

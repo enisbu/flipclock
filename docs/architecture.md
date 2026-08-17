@@ -30,7 +30,7 @@ The part that is genuinely non obvious is the centering. A numeral has to look l
 
 A `.shade` overlay darkens the flap that rotates away. Without it the flip looks flat, because a real flap darkens as it turns away from the light. It is the whole depth effect.
 
-The shade is a gradient, not a flat wash, and that is a consequence of the plate faces carrying gradients. A uniform black overlay was correct while the plates were flat rectangles. Once they were lit from the top, the falling half went evenly dark while the plate it had just left was still lit, and the two halves read as different materials. The shade now has the same shape as the face under it, strongest at the hinge where the plate turns away from the light and weakest at the free edge. The incoming bottom flap carries the mirrored version and fades out as it arrives, so both halves of the movement are shaded rather than only the departing one.
+The shade is a flat black wash, matching the flat plates under it: the falling flap darkens as it turns away, and the arriving flap carries the mirrored version and fades out as it swings in. Depth exists only while something moves; a resting plate is a plain rectangle.
 
 The flap only exists while `flipping` is true. A timer clears it after the animation duration, and the static bottom half shows the old value for exactly that window so nothing flickers behind the moving flap.
 
@@ -114,13 +114,7 @@ There is no color picker, and not only because the product rules forbid visible 
 
 Flip speed and font are global, not theme tokens. They are not a theme concern, and putting them in the token set would invite presets that disagree about motion.
 
-The plate face is a bundled file, `static/split-flap.woff2`: Archivo instanced at Expanded Black and subset to the digits, the colon and the space, 1.3 KB. It is built by `tools/build-font.py`, which is not part of `npm run build`, because the output is committed and the script only runs when the face itself changes.
-
-The subsetting is not the interesting part, the two edits after it are. Every digit is given the same advance with its ink centred inside it, which `font-variant-numeric: tabular-nums` cannot do: tabular figures equalise the advance but leave the sidebearings alone, so the ink of a `1` still sits off centre in its cell and the whole pair shifts as the minute changes. Then the vertical metrics are flattened onto the digit ink, so `line-height: 1` centres the ink in the line box by construction rather than by a magic nudge. Every plate constant in the CSS (`--plate-aspect`, `--digit-of-card`, the 200 percent centring box) is derived from that file's metrics.
-
-Which is exactly why the fallback needs care. Dropping through to a generic monospace stack gives a face with a 0.5em advance against the bundled 0.803em and a different line box, so the digits render at the wrong size and sit off the seam, overflowing the plate. Rather than carry a second set of layout constants, `app.css` declares a `Split Flap Fallback` face over local monospace fonts with `size-adjust`, `ascent-override` and `descent-override` that bend it onto the bundled metrics. Height is the binding constraint, not width: the bundled digits are wide and short and fill 0.656 of the plate height, while a normal monospace digit is narrow and tall and hits the top and bottom edges long before it runs out of width. The overrides are solved against measured render output, not computed on paper. The fallback does not look like the bundled face and is not meant to; it has to stay inside its plate and stay centred on the seam.
-
-Text that is not a digit sets its face explicitly. The date line is the case: the bundled file carries digits only, so a stack that reaches it first would render `AUG` in the fallback and `17` in the plate face, one line in two stroke weights.
+The digits render in the system sans stack with `font-variant-numeric: tabular-nums`. Tabular figures give every digit the same advance width, so the pair never shifts sideways as the minute changes. No font ships with the app: on the Android phone this is built for, the stack resolves to Roboto, and a clock face has no business downloading type. The plate ratios in the CSS (`--plate-aspect`, `--digit-of-card`) are optical choices verified against a rendered screenshot, plus one small `translate` nudge on the digit container: flex centres the line box, not the ink, and the nudge puts the optical middle of the pair back on the seam.
 
 Brightness is applied as `opacity` on the stage. Be clear about what that is: a screen side dim, not backlight control. The web cannot touch the device backlight, and the device brightness setting remains the real control.
 

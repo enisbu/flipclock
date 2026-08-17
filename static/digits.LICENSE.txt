@@ -1,13 +1,8 @@
-static/split-flap.woff2 is a subset of Archivo (Omnibus Type), instanced at
-weight 900 width 125, reduced to the digits 0 to 9, the colon and the space.
-Digit advances and sidebearings were normalised and the vertical metrics were
-flattened. Build script: tools/build-font.py. Original license follows.
-
-Copyright 2020 The Archivo Project Authors (https://github.com/Omnibus-Type/Archivo)
+Copyright 2011 The Roboto Project Authors (https://github.com/googlefonts/roboto-classic)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
-http://scripts.sil.org/OFL
+https://openfontlicense.org
 
 
 -----------------------------------------------------------

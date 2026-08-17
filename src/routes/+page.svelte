@@ -215,7 +215,7 @@
 	{#if hintMounted}
 		<!-- First run only, then gone for good. Not a control and not focusable: it is
 		     a line of text that fades out on its own and leaves the surface empty. -->
-		<p class="hint" class:hint--on={hintVisible} aria-hidden="true">hold to customise</p>
+		<p class="hint" class:hint--on={hintVisible} aria-hidden="true">hold for settings</p>
 	{/if}
 </div>
 
@@ -294,22 +294,21 @@
 	}
 
 	.date {
-		margin: 0;
+		/* On top of the flex gap, so the line sits clearly apart from the plates and
+		   reads as a caption, not as a third row of the clock. */
+		margin: var(--card-gap) 0 0;
 		color: var(--digit-color);
-		/* Set the text face explicitly instead of inheriting it. The bundled plate face
-		   only carries digits, so a stack that reaches it first would render AUG in the
-		   fallback and 17 in the plate face: one line, two stroke weights. */
-		font-family: ui-sans-serif, system-ui, sans-serif;
-		font-size: clamp(0.9rem, 4vmin, 1.6rem);
-		font-weight: 700;
-		letter-spacing: 0.08em;
-		opacity: 0.55;
+		font-size: clamp(0.8rem, 3.2vmin, 1.25rem);
+		font-weight: 500;
+		letter-spacing: 0.22em;
+		opacity: 0.6;
 		text-transform: uppercase;
 	}
 
-	/* The one time gesture hint. Deliberately quiet: small, letterspaced, low
-	   contrast, parked near the bottom edge and well clear of the plates. It fades
-	   in, holds, fades out and unmounts, so it cannot become a permanent element. */
+	/* The one time gesture hint. Deliberately quiet: small, letterspaced, parked
+	   near the bottom edge and well clear of the plates, but still above the 4.5:1
+	   contrast floor, because it is the one text a first time viewer must read. It
+	   fades in, holds, fades out and unmounts, so it cannot become permanent. */
 	.hint {
 		position: absolute;
 		bottom: max(env(safe-area-inset-bottom), 6%);
@@ -317,7 +316,6 @@
 		z-index: 3;
 		margin: 0;
 		color: var(--digit-color);
-		font-family: ui-sans-serif, system-ui, sans-serif;
 		font-size: clamp(0.75rem, 2.6vmin, 1rem);
 		font-weight: 500;
 		letter-spacing: 0.18em;
@@ -330,7 +328,7 @@
 	}
 
 	.hint--on {
-		opacity: 0.38;
+		opacity: 0.6;
 	}
 
 	/* Anything not clearly taller than it is wide reads left to right. Matched to
@@ -351,6 +349,11 @@
 		/* Resolve the size tokens HERE rather than at :root, because only here is
 		   --row-units final. app.css supplies the inputs, the row does the division. */
 		.row {
+			/* One gap between neighbours, so one less than the number of plates: 2 without
+			   seconds, 3 with them. Declared here and not at :root for the same reason as
+			   the size tokens: at :root it would resolve against the default --row-units
+			   and never see the override above. */
+			--row-gaps: calc(round(up, var(--row-units), 1) - 1);
 			--card-w-base: min(
 				calc((var(--row-width) - var(--row-gaps) * var(--card-gap)) / var(--row-units)),
 				var(--row-cap)

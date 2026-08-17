@@ -27,10 +27,8 @@ a settings overlay that dismisses itself. There is no visible control.
 - src/service-worker.ts: caches [...build, ...files] plus the prerendered shell.
   Cache first for assets, network with cache fallback otherwise. No skipWaiting.
 - src/app.css: size token inputs, theme presets via [data-theme], aspect ratio
-  media queries, sr-only, the bundled @font-face and the metric matched fallback
-  that keeps the plate geometry if that file never loads.
-- static/split-flap.woff2: the plate face, digits and colon only, 1.3 KB. Built
-  by tools/build-font.py, which is not part of npm run build.
+  media queries, sr-only. Digits use the system sans stack with tabular-nums,
+  no bundled font.
 - src/lib/clock.test.ts, src/lib/settings.test.ts: vitest, pure logic only.
 
 ## Settings
