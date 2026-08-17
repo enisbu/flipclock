@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import { IsDocumentVisible, watch } from 'runed';
-	import FlipCard from '$lib/FlipCard.svelte';
+	import FlipCard from '$lib/components/FlipCard.svelte';
 	import { countdownParts } from '$lib/clock';
 	import { settings } from '$lib/settings.svelte';
 

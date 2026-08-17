@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { IsDocumentVisible, useInterval, watch } from 'runed';
-	import FaceCarousel from '$lib/FaceCarousel.svelte';
-	import FlipCard from '$lib/FlipCard.svelte';
-	import FocusFace from '$lib/FocusFace.svelte';
-	import SettingsOverlay from '$lib/SettingsOverlay.svelte';
-	import { readTime, spokenTime, startTicking } from '$lib/clock';
+	import FaceCarousel from '$lib/components/FaceCarousel.svelte';
+	import ClockFace from '$lib/components/ClockFace.svelte';
+	import FocusFace from '$lib/components/FocusFace.svelte';
+	import SettingsOverlay from '$lib/components/SettingsOverlay.svelte';
+	import { readTime, startTicking } from '$lib/clock';
 	import { createGestures } from '$lib/gestures';
 	import { settings, FACES, requestPersistentStorage, type Face } from '$lib/settings.svelte';
 	import { keepScreenAwake } from '$lib/wakelock.svelte';
@@ -26,29 +26,6 @@
 
 	let hintVisible = $state(false);
 	let hintMounted = $state(false);
-
-	const dateFormat = new Intl.DateTimeFormat('en', {
-		weekday: 'short',
-		day: 'numeric',
-		month: 'short'
-	});
-
-	/* Gate on the hour, not on time itself: every tick assigns a fresh object, so a
-	   derived that reads time re-formats once a second. The hour is a string and only
-	   propagates when it actually changes. */
-	const hour = $derived(time.hours);
-	const dateLabel = $derived.by(() => {
-		void hour;
-		return dateFormat.format(new Date());
-	});
-
-	const sublineLabel = $derived(
-		settings.subline === 'date'
-			? dateLabel
-			: settings.subline === 'text'
-				? settings.sublineText.trim()
-				: ''
-	);
 
 	function toggleFullscreen() {
 		if (document.fullscreenElement) {
@@ -192,28 +169,11 @@
 
 {#snippet faceView(face: Face)}
 	{#if face === 'clock'}
-		<div class="clock plate-row">
-			<div class="row plate-row" class:row--seconds={settings.showSeconds}>
-				<FlipCard value={time.hours} />
-				<FlipCard value={time.minutes} />
-				{#if settings.showSeconds}
-					<div class="seconds">
-						<FlipCard value={time.seconds} />
-					</div>
-				{/if}
-			</div>
-			{#if sublineLabel}
-				<p class="subline" aria-hidden="true">{sublineLabel}</p>
-			{/if}
-		</div>
+		<ClockFace {time} />
 	{:else if face === 'focus'}
 		<FocusFace bind:this={focusFace} />
 	{/if}
 {/snippet}
-
-<p class="sr-only" aria-live="polite">
-	{spokenTime(time, settings.showSeconds)}{settings.subline === 'date' ? `, ${dateLabel}` : ''}
-</p>
 
 <SettingsOverlay bind:open={showSettings} />
 
@@ -251,38 +211,6 @@
 		justify-content: center;
 	}
 
-	.clock {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: clamp(0.6rem, 4.5vmin, 2.4rem);
-	}
-
-	.seconds {
-		--card-w: calc(var(--card-w-base) / 2);
-		--card-h: calc(var(--card-h-base) / 2);
-		--digit-size: calc(var(--digit-size-base) / 2);
-		--seconds-digit: color-mix(in srgb, var(--digit-color) 88%, var(--card-bg));
-	}
-
-	.seconds :global(.digits) {
-		color: var(--seconds-digit);
-	}
-
-	.subline {
-		margin: 0;
-		color: var(--digit-color);
-		font-size: clamp(0.8rem, calc(var(--card-w) * 0.042), 1.75rem);
-		font-weight: 500;
-		letter-spacing: 0.22em;
-		opacity: 0.6;
-		text-transform: uppercase;
-		max-width: calc(0.92 * var(--usable-w, 100vw));
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
 	.hint {
 		position: absolute;
 		bottom: max(env(safe-area-inset-bottom), 6%);
@@ -303,12 +231,6 @@
 
 	.hint--on {
 		opacity: 0.6;
-	}
-
-	@media (min-aspect-ratio: 10 / 16) {
-		.row--seconds {
-			--row-units: 2.5;
-		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
