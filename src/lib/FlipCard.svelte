@@ -1,25 +1,25 @@
 <script lang="ts">
-	// Eine Flip-Karte zeigt zwei Ziffern (Stunden oder Minuten).
-	// Aufbau wie beim mechanischen Vorbild: obere und untere statische Hälfte,
-	// dazu zwei animierte Klappen, die nur während des Wechsels existieren.
-	// Der Zentriertrick: das Inhalts-Div ist doppelt so hoch wie die Hälfte und
-	// wird von overflow:hidden beschnitten, dadurch sitzt die Ziffer exakt auf der Kante.
+	// A flip card shows two digits (hours or minutes).
+	// Built like the mechanical original: a static top and bottom half, plus two
+	// animated flaps that only exist while the value changes.
+	// The centering trick: the content div is twice as tall as the half and gets
+	// clipped by overflow:hidden, which puts the digit exactly on the edge.
 
-	/** Dauer der Klappbewegung, identisch zur Referenz. */
+	/** Duration of the flap movement, identical to the reference. */
 	const FLIP_MS = 700;
 
-	let { value, label }: { value: string; label: string } = $props();
+	let { value }: { value: string } = $props();
 
 	let previous = $state('');
 	let flipping = $state(false);
 	let timer: ReturnType<typeof setTimeout> | undefined;
 
-	// Zuletzt gezeigter Wert, bewusst ohne Reaktivität: er steuert nur den Vergleich.
+	// Last value shown, deliberately non reactive: it only drives the comparison.
 	let seen: string | undefined;
 
 	$effect(() => {
 		const next = value;
-		// Erster Lauf: nur merken, es gibt nichts zu klappen.
+		// First run: just remember it, there is nothing to flip.
 		if (seen === undefined) {
 			seen = next;
 			previous = next;
@@ -29,7 +29,7 @@
 		previous = seen;
 		seen = next;
 
-		// Bei prefers-reduced-motion springt die Zahl hart um.
+		// With prefers-reduced-motion the number jumps instead of flipping.
 		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
 			previous = next;
 			return;
@@ -56,18 +56,17 @@
 	</div>
 
 	{#if flipping}
-		<!-- Obere Klappe trägt die alte Zahl und dreht um ihre Unterkante weg. -->
+		<!-- The top flap carries the old number and rotates away around its bottom edge. -->
 		<div class="flap flap--top">
 			<span class="digits">{previous}</span>
 			<div class="shade"></div>
 		</div>
-		<!-- Untere Klappe trägt die neue Zahl und dreht in die Sichtebene herein. -->
+		<!-- The bottom flap carries the new number and rotates into the viewing plane. -->
 		<div class="flap flap--bottom">
 			<span class="digits">{value}</span>
 		</div>
 	{/if}
 </div>
-<span class="sr-only">{label}: {value}</span>
 
 <style>
 	.card {
@@ -77,7 +76,7 @@
 		font-size: var(--digit-size);
 		line-height: 1;
 		letter-spacing: -0.025em;
-		/* Feste Ziffernbreite, sonst springt das Layout beim Wechsel. */
+		/* Fixed digit width, otherwise the layout jumps on every change. */
 		font-variant-numeric: tabular-nums;
 		perspective: 1000px;
 	}
@@ -112,8 +111,8 @@
 		height: var(--gap);
 	}
 
-	/* Doppelte Höhe im beschnittenen Container: die Ziffer ist im vollen
-	   Kartenraum zentriert, sichtbar bleibt nur die jeweilige Hälfte. */
+	/* Double height inside the clipped container: the digit is centered in the full
+	   card space, only the respective half stays visible. */
 	.digits {
 		position: absolute;
 		left: 0;
@@ -152,7 +151,7 @@
 		animation: flip-bottom var(--flip-ms) cubic-bezier(0.4, 0, 0.2, 1) forwards;
 	}
 
-	/* Verdunkelt die wegdrehende Klappe, das erzeugt die Tiefe. */
+	/* Darkens the flap that rotates away, which creates the sense of depth. */
 	.shade {
 		position: absolute;
 		inset: 0;

@@ -1,10 +1,10 @@
-// Screen Wake Lock: hält das Display wach, solange die Seite sichtbar ist.
-// Android gibt den Lock bei jedem Wechsel nach hidden frei, darum das Re-Acquire
-// auf visibilitychange. Fehlt die API (Firefox älter, Safari), passiert nichts.
+// Screen Wake Lock: keeps the display awake while the page is visible.
+// Android releases the lock on every switch to hidden, hence the re acquire on
+// visibilitychange. If the API is missing (older Firefox, Safari), nothing happens.
 
 /**
- * Fordert den Wake Lock an und hält ihn über Sichtbarkeitswechsel hinweg.
- * Gibt eine Aufräum-Funktion zurück.
+ * Requests the wake lock and holds it across visibility changes.
+ * Returns a cleanup function.
  */
 export function keepScreenAwake(): () => void {
 	if (!('wakeLock' in navigator)) return () => {};
@@ -20,8 +20,8 @@ export function keepScreenAwake(): () => void {
 				lock = null;
 			});
 		} catch {
-			// Der Lock ist eine Bitte, keine Garantie: Energiesparmodus oder fehlendes
-			// HTTPS lassen ihn scheitern. Kein Grund, die Uhr zu stoppen.
+			// The lock is a request, not a guarantee: battery saver or a missing HTTPS
+			// context make it fail. That is no reason to stop the clock.
 			lock = null;
 		}
 	}

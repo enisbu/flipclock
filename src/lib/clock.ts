@@ -1,12 +1,6 @@
-// Zeitlogik: driftfreier Tick und Formatierung.
-// Kein setInterval(1000) blind, sondern jeder Tick berechnet aus Date die Restzeit
-// bis zur nächsten Grenze und setzt dafür ein frisches setTimeout.
-
-/** 24-Stunden-Format, feste Vorgabe. Es gibt bewusst keine UI dafür. */
-export const HOUR_24 = true;
-
-/** Sekunden-Karte. Standard aus, sie stört den ruhigen Look. */
-export const SHOW_SECONDS = false;
+// Time logic: drift free tick and formatting.
+// Never a blind setInterval(1000). Every tick computes the remaining time until
+// the next boundary from Date and arms a fresh setTimeout for exactly that span.
 
 export type ClockTime = {
 	hours: string;
@@ -18,10 +12,10 @@ function pad(value: number): string {
 	return value.toString().padStart(2, '0');
 }
 
-/** Liest die aktuelle Uhrzeit als zweistellige Strings. */
-export function readTime(now: Date = new Date()): ClockTime {
+/** Reads the current time as two digit strings. */
+export function readTime(use24h: boolean, now: Date = new Date()): ClockTime {
 	const rawHours = now.getHours();
-	const hours = HOUR_24 ? rawHours : rawHours % 12 || 12;
+	const hours = use24h ? rawHours : rawHours % 12 || 12;
 	return {
 		hours: pad(hours),
 		minutes: pad(now.getMinutes()),
@@ -29,30 +23,42 @@ export function readTime(now: Date = new Date()): ClockTime {
 	};
 }
 
-/** Vorlesbare Fassung für Screenreader. */
-export function spokenTime(time: ClockTime): string {
-	return SHOW_SECONDS
-		? `${time.hours}:${time.minutes}:${time.seconds} Uhr`
-		: `${time.hours}:${time.minutes} Uhr`;
+/** Readable form for screen readers. */
+export function spokenTime(time: ClockTime, showSeconds: boolean): string {
+	return showSeconds
+		? `${time.hours}:${time.minutes}:${time.seconds}`
+		: `${time.hours}:${time.minutes}`;
+}
+
+/** Tick step in milliseconds: one second while seconds show, otherwise one minute. */
+export function tickStep(showSeconds: boolean): number {
+	return showSeconds ? 1000 : 60_000;
 }
 
 /**
- * Startet den Tick auf der nächsten Grenze (Sekunde oder Minute, je nach SHOW_SECONDS).
- * Gibt eine Stopp-Funktion zurück.
+ * Milliseconds until the next full second or minute, plus a 20 ms safety margin
+ * so an early timer does not hit the same boundary twice.
  */
-export function startTicking(onTick: (time: ClockTime) => void): () => void {
-	const step = SHOW_SECONDS ? 1000 : 60_000;
+export function nextDelay(step: number, now: number = Date.now()): number {
+	return step - (now % step) + 20;
+}
+
+/**
+ * Starts the tick on the next boundary (second or minute, depending on showSeconds).
+ * Returns a stop function.
+ */
+export function startTicking(
+	onTick: (time: ClockTime) => void,
+	options: { use24h: boolean; showSeconds: boolean }
+): () => void {
+	const step = tickStep(options.showSeconds);
 	let timer: ReturnType<typeof setTimeout> | undefined;
 
 	function schedule() {
-		const now = Date.now();
-		// Rest bis zur nächsten vollen Sekunde bzw. Minute, plus 20 ms Sicherheitsabstand,
-		// damit ein früher Wecker nicht dieselbe Grenze zweimal trifft.
-		const wait = step - (now % step) + 20;
 		timer = setTimeout(() => {
-			onTick(readTime());
+			onTick(readTime(options.use24h));
 			schedule();
-		}, wait);
+		}, nextDelay(step));
 	}
 
 	schedule();

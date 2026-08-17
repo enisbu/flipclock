@@ -1,8 +1,8 @@
-/* Globale Basis. Alle Maße hängen an vmin, damit die Uhr auf jedem Handy
-   formatfüllend sitzt, ohne einen Wald aus Media Queries. */
+/* Global base. The sizes hang off viewport units so the clock fills any phone
+   without a forest of media queries. */
 
 :root {
-	/* Hochformat: die Breite begrenzt, zwei Karten untereinander. */
+	/* Portrait: the width is the limit, cards sit on top of each other. */
 	--card-w-base: clamp(9rem, 76vmin, 26rem);
 	--card-h-base: clamp(8rem, 70vmin, 24rem);
 	--digit-size-base: clamp(6rem, 52vmin, 17rem);
@@ -13,20 +13,60 @@
 
 	--card-gap: clamp(0.5rem, 2.5vmin, 1.5rem);
 	--card-radius: clamp(1rem, 4vmin, 2.5rem);
+
+	/* Theme surface. The default is true OLED black, see below. */
+	--bg: #000;
 	--card-bg: #141414;
 	--digit-color: #f2f2f2;
+	--accent: #539bf5;
+
 	--gap: 3px;
 	--flip-ms: 700ms;
 
 	color-scheme: dark;
 }
 
+/* Landscape: vmin follows the height here, so two or three cards side by side
+   would each claim 76vh of horizontal room and overflow a 16:9 screen. The width
+   is therefore measured against vw, the height against dvh, which also holds up
+   in a normal browser tab where the toolbar eats into the viewport. */
+@media (orientation: landscape) {
+	:root {
+		--card-w-base: clamp(6rem, 30vw, 20rem);
+		--card-h-base: clamp(6rem, 74dvh, 22rem);
+		--digit-size-base: clamp(4rem, 52dvh, 16rem);
+	}
+}
+
+/* Curated theme presets. No color picker: a handful of sets that are known to
+   look right on an always on display. */
+[data-theme='warm'] {
+	--bg: #000;
+	--card-bg: #1a1208;
+	--digit-color: #f5deb3;
+	--accent: #c8a96e;
+}
+
+[data-theme='night'] {
+	--bg: #000;
+	--card-bg: #0a0a0a;
+	--digit-color: #4a4a4a;
+	--accent: #333;
+}
+
+[data-theme='slate'] {
+	--bg: #0d1117;
+	--card-bg: #1c2128;
+	--digit-color: #adbac7;
+	--accent: #539bf5;
+}
+
 html,
 body {
 	height: 100%;
 	margin: 0;
-	/* Echtes Schwarz: ausgeschaltete OLED-Pixel altern nicht. */
-	background: #000;
+	/* True black by default: switched off OLED pixels do not age. */
+	background: var(--bg);
 	color: var(--digit-color);
 	overflow: hidden;
 	font-family: ui-sans-serif, system-ui, sans-serif;
@@ -42,7 +82,7 @@ body {
 	box-sizing: border-box;
 }
 
-/* Sichtbar nur für Screenreader. */
+/* Visible to screen readers only. */
 .sr-only {
 	position: absolute;
 	width: 1px;
