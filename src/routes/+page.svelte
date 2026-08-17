@@ -240,7 +240,7 @@
 					)}
 					aria-hidden={settings.face !== 'clock'}
 				>
-					<div class="clock">
+					<div class="clock plate-row">
 						<div class="row plate-row" class:row--seconds={settings.showSeconds}>
 							<FlipCard value={time.hours} />
 							<FlipCard value={time.minutes} />
@@ -320,8 +320,6 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		/* vmin, not the vw driven --card-gap: landscape has the width to spare and
-		   would push the subline three times as far from the plates as portrait. */
 		gap: clamp(0.6rem, 4.5vmin, 2.4rem);
 	}
 
@@ -346,7 +344,7 @@
 	.subline {
 		margin: 0;
 		color: var(--digit-color);
-		font-size: clamp(0.8rem, 3.2vmin, 1.25rem);
+		font-size: clamp(0.8rem, calc(var(--card-w) * 0.042), 1.75rem);
 		font-weight: 500;
 		letter-spacing: 0.22em;
 		opacity: 0.6;
