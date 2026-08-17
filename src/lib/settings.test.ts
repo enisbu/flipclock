@@ -43,6 +43,29 @@ describe('migrate', () => {
 		expect(result.version).toBe(CURRENT_VERSION);
 		expect(result.use24h).toBe(false);
 	});
+
+	it('marks the hint as seen for an existing install, which is not a first run', () => {
+		// Anything already stored predates the hint, so showing it would be noise.
+		expect(migrate({ version: 1, theme: 'slate' }).hintSeen).toBe(true);
+		expect(migrate({ use24h: false }).hintSeen).toBe(true);
+	});
+
+	it('leaves the hint unseen for a fresh install with nothing stored', () => {
+		expect(DEFAULTS.hintSeen).toBe(false);
+	});
+
+	it('keeps a stored hintSeen of false rather than overwriting it', () => {
+		// A viewer who was interrupted mid hint still owns the flag.
+		expect(migrate({ version: 2, hintSeen: false }).hintSeen).toBe(false);
+	});
+
+	it('carries the migration chain from 0 all the way to the current version', () => {
+		const result = migrate({ use24h: false, brightness: 0.5 });
+		expect(result.version).toBe(CURRENT_VERSION);
+		expect(result.use24h).toBe(false);
+		expect(result.brightness).toBe(0.5);
+		expect(result.theme).toBe(DEFAULTS.theme);
+	});
 });
 
 describe('loadSettings', () => {

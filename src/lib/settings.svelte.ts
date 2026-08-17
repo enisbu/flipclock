@@ -5,7 +5,7 @@
 const STORAGE_KEY = 'flip-clock-settings';
 
 /** Bump when the stored shape changes, and add the matching migration below. */
-export const CURRENT_VERSION = 1;
+export const CURRENT_VERSION = 2;
 
 export const THEMES = ['default', 'warm', 'night', 'slate'] as const;
 export type Theme = (typeof THEMES)[number];
@@ -17,6 +17,12 @@ export type Settings = {
 	showDate: boolean;
 	theme: Theme;
 	brightness: number;
+	/**
+	 * False until the one time "hold to customise" hint has been shown. Every
+	 * setting hides behind a long press with nothing on screen pointing at it, so
+	 * a first run shows the gesture once and then never again.
+	 */
+	hintSeen: boolean;
 };
 
 export const DEFAULTS: Settings = {
@@ -25,7 +31,8 @@ export const DEFAULTS: Settings = {
 	showSeconds: false,
 	showDate: false,
 	theme: 'default',
-	brightness: 1
+	brightness: 1,
+	hintSeen: false
 };
 
 /**
@@ -36,7 +43,12 @@ export const DEFAULTS: Settings = {
 const MIGRATIONS: Record<number, (data: Record<string, unknown>) => Record<string, unknown>> = {
 	// 0 predates the versioned object. Nothing to rename yet, so the payload
 	// passes through and only picks up the current defaults below.
-	0: (data) => data
+	0: (data) => data,
+	// 1 to 2 adds hintSeen. Anyone with stored settings is not a first run, so the
+	// hint is marked as already seen: they have used the app and a tip about a
+	// gesture they may already know would be noise. Only a fresh install, which
+	// has nothing stored at all, falls through to the default of false.
+	1: (data) => ({ ...data, hintSeen: true })
 };
 
 function clampBrightness(value: unknown): number {
@@ -55,7 +67,8 @@ function coerce(data: Record<string, unknown>): Settings {
 		showSeconds: typeof merged.showSeconds === 'boolean' ? merged.showSeconds : DEFAULTS.showSeconds,
 		showDate: typeof merged.showDate === 'boolean' ? merged.showDate : DEFAULTS.showDate,
 		theme,
-		brightness: clampBrightness(merged.brightness)
+		brightness: clampBrightness(merged.brightness),
+		hintSeen: typeof merged.hintSeen === 'boolean' ? merged.hintSeen : DEFAULTS.hintSeen
 	};
 }
 
@@ -152,6 +165,13 @@ class SettingsStore {
 	}
 	set brightness(next: number) {
 		this.#value.brightness = clampBrightness(next);
+	}
+
+	get hintSeen() {
+		return this.#value.hintSeen;
+	}
+	set hintSeen(next: boolean) {
+		this.#value.hintSeen = next;
 	}
 
 	/** Snapshot for persistence. */
