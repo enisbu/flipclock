@@ -64,6 +64,7 @@
 		<!-- The bottom flap carries the new number and rotates into the viewing plane. -->
 		<div class="flap flap--bottom">
 			<span class="digits">{value}</span>
+			<div class="shade shade--bottom"></div>
 		</div>
 	{/if}
 </div>
@@ -73,12 +74,15 @@
 		position: relative;
 		width: var(--card-w);
 		height: var(--card-h);
-		/* The bundled plate face, with a monospace stack only as a crash barrier.
-		   Its digits all carry the same advance and their ink is centred inside that
-		   advance, which is what CSS tabular-nums cannot do. Its vertical metrics are
-		   flattened onto the digit ink, so line-height 1 centres the ink in the line
-		   box by construction instead of by a nudge. */
-		font-family: 'Split Flap', ui-monospace, monospace;
+		/* The bundled plate face. Its digits all carry the same advance and their ink is
+		   centred inside that advance, which is what CSS tabular-nums cannot do. Its
+		   vertical metrics are flattened onto the digit ink, so line-height 1 centres
+		   the ink in the line box by construction instead of by a nudge.
+
+		   The second entry is the metric matched fallback declared in app.css, not the
+		   raw monospace stack: it carries the same advance and line box, so the plate
+		   geometry survives the file failing to load. */
+		font-family: 'Split Flap', 'Split Flap Fallback', ui-monospace, monospace;
 		font-size: var(--digit-size);
 		font-weight: 400;
 		line-height: 1;
@@ -210,14 +214,29 @@
 		animation: flip-bottom var(--flip-ms) cubic-bezier(0.4, 0, 0.2, 1) forwards;
 	}
 
-	/* Darkens the flap that rotates away, which creates the sense of depth. */
+	/* Darkens the flap that rotates away, which creates the sense of depth.
+
+	   The static faces carry a gradient now, so a flat black wash no longer matches
+	   them: the falling half went uniformly dark while the plate it left behind was
+	   still lit from the top, and the two read as different materials. The shade is
+	   therefore a gradient of the same shape as the face under it, strongest at the
+	   hinge where the plate turns away from the light and weakest at the free edge. */
 	.shade {
 		position: absolute;
 		inset: 0;
 		z-index: 3;
-		background: #000;
+		background: linear-gradient(to bottom, rgb(0 0 0 / 0.35) 0%, rgb(0 0 0 / 1) 100%);
 		pointer-events: none;
 		animation: shade-top var(--flip-ms) linear forwards;
+	}
+
+	/* The incoming half arrives out of the dark and lights up as it reaches the
+	   viewing plane, which is the same movement in reverse. Without it the bottom
+	   flap appears at full brightness the instant it becomes visible and the flip
+	   loses its second half. */
+	.shade--bottom {
+		background: linear-gradient(to bottom, rgb(0 0 0 / 1) 0%, rgb(0 0 0 / 0.35) 100%);
+		animation-name: shade-bottom;
 	}
 
 	@keyframes flip-top {
@@ -238,12 +257,30 @@
 		}
 	}
 
+	/* Both halves are only ever visible for half of their arc, so the shading runs
+	   over that half and holds. The top flap darkens from lit to fully turned away,
+	   the bottom flap does the reverse as it swings into the plane. */
 	@keyframes shade-top {
 		0% {
 			opacity: 0;
 		}
+		50% {
+			opacity: 0.55;
+		}
 		100% {
-			opacity: 0.6;
+			opacity: 0.72;
+		}
+	}
+
+	@keyframes shade-bottom {
+		0% {
+			opacity: 0.72;
+		}
+		50% {
+			opacity: 0.55;
+		}
+		100% {
+			opacity: 0;
 		}
 	}
 

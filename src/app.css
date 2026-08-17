@@ -24,7 +24,9 @@
 
 	/* Stacked layout: one plate per row, so the plate may take nearly the full width.
 	   Two plates plus a gap need 2 * 0.94 * 0.59 = 1.11 times the width in height,
-	   which the aspect-ratio branch below guarantees. */
+	   which the aspect-ratio branch below guarantees. This branch only ever runs on a
+	   viewport taller than it is wide, so there is nothing to cap against the height:
+	   the plate takes the width it is given. */
 	--card-w-base: min(94vw, 34rem);
 	--card-h-base: calc(var(--card-w-base) * var(--plate-aspect));
 	--digit-size-base: calc(var(--card-w-base) * var(--digit-of-card));
@@ -50,16 +52,34 @@
 }
 
 /* Row layout: everything not clearly taller than it is wide, which is a landscape
-   phone but also a tablet, a split screen and any desktop window. Two plates plus
-   the gap between them share the width, hence roughly 44vw each. Going through the
-   aspect ratio rather than through orientation is what keeps a near square viewport
-   from stacking a column that is taller than the screen. */
+   phone but also a tablet, a split screen and any desktop window. The plates sit
+   side by side, so they divide the width between them. Going through the aspect
+   ratio rather than through orientation is what keeps a near square viewport from
+   stacking a column that is taller than the screen. */
 @media (min-aspect-ratio: 10 / 16) {
 	:root {
-		/* Two plates plus the gap between them share the width. 44vw each leaves the
-		   gap a visible 5vw, so the pair reads as two plates on a board rather than
-		   as one wide slab with a line down the middle. */
-		--card-w-base: min(44vw, 30rem);
+		/* How many plate widths the row has to carry. Hours and minutes are one each,
+		   and the half size seconds plate adds 0.5, so +page.svelte raises this to 2.5
+		   while seconds are shown. Solving
+
+		     units * w + gaps * card-gap = usable width
+
+		   for w is what keeps the row inside the viewport in every combination. Before
+		   this existed the width was a flat 44vw, correct for two plates and 82px per
+		   side too wide once the seconds plate joined the row.
+
+		   The default lives here, but the three size tokens below are deliberately NOT
+		   resolved at :root. A custom property is substituted in the scope of the
+		   element that uses it, so leaving the formula unresolved until .row lets the
+		   row override --row-units and actually change the outcome. */
+		--row-units: 2;
+		/* One gap between neighbours, so one less than the number of plates. The count
+		   is the units rounded up: 2 plates without seconds, 3 with them. */
+		--row-gaps: calc(round(up, var(--row-units), 1) - 1);
+		/* 94vw of usable width, matching the stacked branch, minus the gaps between the
+		   plates. The 30rem cap keeps a huge window from turning this into a billboard. */
+		--row-width: 94vw;
+		--row-cap: 30rem;
 
 		--card-gap: clamp(0.8rem, 4vw, 3rem);
 		--card-radius: clamp(0.4rem, 0.8vw, 1rem);
@@ -67,14 +87,16 @@
 	}
 }
 
-/* Wide and short: a desktop window or a 16:9 monitor, where 45vw of plate is
+/* Wide and short: a desktop window or a 16:9 monitor, where a width derived plate is
    taller than the screen. A phone in landscape is about 2.2 wide, so the cap only
-   engages past 2.5 and no device that hides browser chrome on a tap ever reaches
-   this branch. That keeps the fullscreen jump fixed where it matters while still
-   fitting a letterbox window. */
+   engages past 2.5 and no device that hides browser chrome on a tap ever reaches this
+   branch. That keeps the fullscreen jump fixed where it matters while still fitting a
+   letterbox window. The height cap goes through --plate-aspect, so it holds at
+   whatever --row-units the row currently asks for. */
 @media (min-aspect-ratio: 5 / 2) {
 	:root {
-		--card-w-base: min(46vw, 130vmin, 30rem);
+		--row-width: 98vw;
+		--row-cap: min(30rem, calc(78dvh / var(--plate-aspect)));
 	}
 }
 
@@ -90,6 +112,37 @@
 	font-weight: 400;
 	font-style: normal;
 	font-display: block;
+}
+
+/* Metric matched fallback, used only if the woff2 above never arrives.
+
+   Every plate constant (--plate-aspect, --digit-of-card, the 200% centring box in
+   FlipCard) is derived from the bundled face: a 0.803em digit advance and a line
+   box of 0.844 up by 0.156 down. The generic monospace stack measures 0.5em by
+   0.891 by 0.216, so dropping straight through to it renders the digits far too
+   large for the plate and sitting too low, with the seam cutting them in the wrong
+   place and the pair spilling over the bottom edge.
+
+   These descriptors bend the fallback onto the bundled metrics instead of
+   duplicating every layout constant for a second face. The numbers are measured
+   against the real thing rather than derived on paper. Height is the binding
+   constraint, not width: the bundled digits are wide and short, so their ink fills
+   0.656 of the plate height, while a normal monospace digit is narrow and tall and
+   blows through the top and bottom edges long before it runs out of width.
+   size-adjust is therefore solved against ink height, and the ascent and descent
+   overrides then place that ink on the seam. A descriptor applies to the already
+   adjusted em, which is why these are not simply the bundled percentages.
+
+   The fallback will not look like the bundled face, and it is not meant to. It has
+   to stay inside its plate and stay centred on the seam, which it now does. */
+@font-face {
+	font-family: 'Split Flap Fallback';
+	src: local('DejaVu Sans Mono'), local('Liberation Mono'), local('Menlo'),
+		local('Consolas'), local('Courier New');
+	size-adjust: 102.5%;
+	ascent-override: 82.4%;
+	descent-override: 15.2%;
+	line-gap-override: 0%;
 }
 
 /* Curated theme presets. No color picker: a handful of sets that are known to

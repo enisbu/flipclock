@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import FlipCard from '$lib/FlipCard.svelte';
 	import SettingsOverlay from '$lib/SettingsOverlay.svelte';
 	import { readTime, spokenTime, startTicking } from '$lib/clock';
@@ -14,10 +15,19 @@
 	/** Pointer travel that cancels the press, so a stray drag does nothing. */
 	const MOVE_TOLERANCE_PX = 10;
 
+	/** How long the one time gesture hint stays on screen before it fades out. */
+	const HINT_MS = 4000;
+	/** Length of the fade, kept in sync with the CSS transition below. */
+	const HINT_FADE_MS = 900;
+
 	let time = $state(readTime(settings.use24h));
 	let shiftX = $state(0);
 	let shiftY = $state(0);
 	let showSettings = $state(false);
+	// The one time hint. Mounted only on a first run and removed for good after it
+	// fades, so at rest the screen is the clock on black and nothing else.
+	let hintVisible = $state(false);
+	let hintMounted = $state(false);
 
 	let pressTimer: ReturnType<typeof setTimeout> | undefined;
 	let pressOrigin: { x: number; y: number } | null = null;
@@ -43,6 +53,35 @@
 
 	$effect(() => {
 		requestPersistentStorage();
+	});
+
+	// First run only: show the gesture once, then write the flag so it never returns.
+	// Everything about the app hides behind a long press and nothing on the naked
+	// surface hints at it, which is why a first time viewer sees only a clock and
+	// concludes there is nothing else there.
+	//
+	// The flag is read untracked on purpose. Reading it reactively would make this
+	// effect depend on the very value it writes below, so the write would tear the
+	// effect down and clear its own timers before the hint ever faded in.
+	$effect(() => {
+		if (untrack(() => settings.hintSeen)) return;
+
+		hintMounted = true;
+		// A frame later, so the element mounts at opacity 0 and the fade in runs.
+		const show = requestAnimationFrame(() => (hintVisible = true));
+		const hide = setTimeout(() => (hintVisible = false), HINT_MS);
+		// Unmount only after the fade has finished, leaving an empty surface behind.
+		const drop = setTimeout(() => (hintMounted = false), HINT_MS + HINT_FADE_MS);
+
+		// Written immediately rather than after the timers: a viewer who closes the
+		// tab during those few seconds has still been shown the hint.
+		settings.hintSeen = true;
+
+		return () => {
+			cancelAnimationFrame(show);
+			clearTimeout(hide);
+			clearTimeout(drop);
+		};
 	});
 
 	// Reading both settings here is deliberate: when either flips, Svelte tears this
@@ -156,7 +195,10 @@
 	></button>
 
 	<div class="clock" style="transform: translate({shiftX}px, {shiftY}px)">
-		<div class="row">
+		<!-- The row tells the size tokens how many plate widths it has to carry, so the
+		     landscape branch in app.css can divide the viewport instead of assuming two
+		     plates. The seconds plate is half size, hence 2.5 rather than 3. -->
+		<div class="row" class:row--seconds={settings.showSeconds}>
 			<FlipCard value={time.hours} />
 			<FlipCard value={time.minutes} />
 			{#if settings.showSeconds}
@@ -169,6 +211,12 @@
 			<p class="date" aria-hidden="true">{dateLabel}</p>
 		{/if}
 	</div>
+
+	{#if hintMounted}
+		<!-- First run only, then gone for good. Not a control and not focusable: it is
+		     a line of text that fades out on its own and leaves the surface empty. -->
+		<p class="hint" class:hint--on={hintVisible} aria-hidden="true">hold to customise</p>
+	{/if}
 </div>
 
 <p class="sr-only" aria-live="polite">
@@ -226,20 +274,63 @@
 	}
 
 	.seconds {
-		/* Clearly subordinate, half the card size. */
+		/* Clearly subordinate, half the plate size. All three tokens are scaled by the
+		   same factor, so the plate keeps the face aspect and the digits keep the same
+		   fill ratio inside it: a half width plate needs a half size digit or the pair
+		   runs over the edge. */
 		--card-w: calc(var(--card-w-base) / 2);
 		--card-h: calc(var(--card-h-base) / 2);
 		--digit-size: calc(var(--digit-size-base) / 2);
-		opacity: 0.5;
+		/* Subordinate through size, not through a washed out numeral. opacity on the
+		   wrapper blended the white digits into the plate behind them and turned them
+		   grey, which read as a rendering fault rather than as a hierarchy. The plate
+		   now keeps full contrast and only the digit is toned down, via a second token
+		   so the declaration does not reference the property it is setting. */
+		--seconds-digit: color-mix(in srgb, var(--digit-color) 88%, var(--card-bg));
+	}
+
+	.seconds :global(.digits) {
+		color: var(--seconds-digit);
 	}
 
 	.date {
 		margin: 0;
 		color: var(--digit-color);
+		/* Set the text face explicitly instead of inheriting it. The bundled plate face
+		   only carries digits, so a stack that reaches it first would render AUG in the
+		   fallback and 17 in the plate face: one line, two stroke weights. */
+		font-family: ui-sans-serif, system-ui, sans-serif;
 		font-size: clamp(0.9rem, 4vmin, 1.6rem);
+		font-weight: 700;
 		letter-spacing: 0.08em;
 		opacity: 0.55;
 		text-transform: uppercase;
+	}
+
+	/* The one time gesture hint. Deliberately quiet: small, letterspaced, low
+	   contrast, parked near the bottom edge and well clear of the plates. It fades
+	   in, holds, fades out and unmounts, so it cannot become a permanent element. */
+	.hint {
+		position: absolute;
+		bottom: max(env(safe-area-inset-bottom), 6%);
+		left: 50%;
+		z-index: 3;
+		margin: 0;
+		color: var(--digit-color);
+		font-family: ui-sans-serif, system-ui, sans-serif;
+		font-size: clamp(0.75rem, 2.6vmin, 1rem);
+		font-weight: 500;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		white-space: nowrap;
+		pointer-events: none;
+		opacity: 0;
+		transform: translateX(-50%);
+		transition: opacity 900ms ease;
+	}
+
+	.hint--on {
+		opacity: 0.38;
 	}
 
 	/* Anything not clearly taller than it is wide reads left to right. Matched to
@@ -249,6 +340,27 @@
 		.row {
 			flex-direction: row;
 			align-items: center;
+		}
+
+		/* Hours and minutes are one plate width each, the half size seconds plate adds
+		   another half. */
+		.row--seconds {
+			--row-units: 2.5;
+		}
+
+		/* Resolve the size tokens HERE rather than at :root, because only here is
+		   --row-units final. app.css supplies the inputs, the row does the division. */
+		.row {
+			--card-w-base: min(
+				calc((var(--row-width) - var(--row-gaps) * var(--card-gap)) / var(--row-units)),
+				var(--row-cap)
+			);
+			--card-h-base: calc(var(--card-w-base) * var(--plate-aspect));
+			--digit-size-base: calc(var(--card-w-base) * var(--digit-of-card));
+
+			--card-w: var(--card-w-base);
+			--card-h: var(--card-h-base);
+			--digit-size: var(--digit-size-base);
 		}
 	}
 
