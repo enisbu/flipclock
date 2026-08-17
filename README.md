@@ -1,56 +1,65 @@
+<div align="center">
+
 # Flipclock
 
-A flip clock webapp for a phone that sits in a holder on your desk: something you glance at, never operate.
+[![Flipclock, a split flap clock for a phone that never gets touched](static/og.png)](https://flip.enisdev.com)
 
-![Svelte 5](https://img.shields.io/badge/Svelte-5-ff3e00)
-![SvelteKit 2](https://img.shields.io/badge/SvelteKit-2-ff3e00)
-![License: MIT](https://img.shields.io/badge/License-MIT-blue)
+![Svelte 5](https://img.shields.io/badge/Svelte-5-FF3E00?style=flat&logo=svelte&logoColor=white)
+![SvelteKit 2](https://img.shields.io/badge/SvelteKit-2-FF3E00?style=flat&logo=svelte&logoColor=white)
+![MIT](https://img.shields.io/badge/License-MIT-6366F1?style=flat)
 
-Live at [flip.enisdev.com](https://flip.enisdev.com).
+**A split flap clock for an old phone parked in a holder on your desk**, looked at and never operated.
 
-```sh
+[Live](https://flip.enisdev.com) · [Android setup](docs/android-setup.md) · [Architecture](docs/architecture.md)
+
+</div>
+
+At rest the screen carries the clock on black and nothing else. No gear, no toolbar, no panel. A tap toggles fullscreen, a press of about 600 ms opens the settings overlay, and the overlay leaves on its own after six seconds without input.
+
+There are five settings and there will not be a sixth: 24 hour time, seconds, date, theme preset, brightness. They live in `localStorage` and nowhere else.
+
+Once the page has loaded, the network is never needed again. A service worker caches the shell and every build asset, so the clock runs in airplane mode for as long as the phone stays powered. There is no backend, no API, no tracking and no runtime dependency: the only packages in `package.json` are build tooling.
+
+The digits come from `static/split-flap.woff2`, an Archivo subset cut down to the ten digits, the colon and the space. It weighs about 1.3 KB, ships from the repo instead of a CDN and gets cached with everything else. Every digit has the same advance width, so the display never shifts sideways as the numbers change. The license sits next to it in `static/split-flap.LICENSE.txt`.
+
+## Setting up the phone
+
+The app keeps the screen awake as far as the browser allows, which is less than you want. An always on display is a device configuration, not a piece of code, and this is the part you have to do yourself. It takes five minutes, once.
+
+Install it first: open the site in Chrome and choose "Add to home screen". The manifest only applies to an installed app, and an installed app cannot have its wake lock stolen by another tab.
+
+Then, in Android settings:
+
+- **Developer options, "Stay awake"**, sometimes called "Keep screen on while charging". This is the setting that actually holds the display open, and it beats anything the app can do from JavaScript. Unlock developer options by tapping the build number in About phone seven times. It only works on a cable, so the phone stays plugged in permanently.
+- **Display, screen timeout**: the longest value the device offers, as a backstop for the moments the wake lock is not held.
+- **Display, adaptive brightness off**, then set the slider manually to somewhere around 10 to 20 percent. Do both halves. Adaptive brightness dims the clock into illegibility in the dark room where you most want to read it. The low fixed setting is also the single best defense against OLED burn in, far more than the pixel shift the app already runs.
+- **Auto rotate**, to taste. The layout handles both orientations, so lock it in the orientation of your holder or leave it free and let the layout reflow.
+
+Use a phone you no longer carry and take the case off. Charging while driving a display makes heat, and sustained heat above roughly 45 degrees Celsius damages the battery for good.
+
+The full version, including what to check when the screen still goes to sleep: [docs/android-setup.md](docs/android-setup.md).
+
+## Two limits worth knowing
+
+True kiosk fullscreen, with the Android status and navigation bars gone, is not reachable from a web app. No web API exposes it and getting there needs an MDM or a kiosk launcher. A tap toggles the browser fullscreen mode and installing as a PWA drops the browser chrome. That is the ceiling.
+
+An installed PWA also keeps the manifest values it was installed with. The manifest ships `"orientation": "any"`, so if you change it, the installed app keeps the old value until you uninstall and install again.
+
+## Development
+
+```bash
 npm install     # Node 22 LTS
-npm run dev     # dev server
-npm run build   # production build into build/
-npm run check   # svelte-check, must report 0 errors and 0 warnings
+npm run dev
+npm run check   # svelte-check, 0 errors and 0 warnings
 npm test        # vitest, pure logic only
+npm run build   # into build/
+npm start       # serve the build
 ```
 
-## Features
+The service worker has no real assets under `vite dev`, so test offline behaviour against `npm run build && npm start`.
 
-At rest the screen shows the clock on black and nothing else. There is no gear, no toolbar, no panel. A tap toggles fullscreen, a long press of about 600 ms opens a settings overlay that dismisses itself after a few seconds of no interaction.
-
-- Works offline forever. A service worker caches the shell and every build asset on first load, so the app runs in airplane mode indefinitely. No backend, no API, no tracking, no CDN font.
-- Zero runtime dependencies. A handful of source files, no framework beyond SvelteKit, no CSS framework, no animation library.
-- Drift free tick. Every tick recomputes the time from `Date` and arms a fresh `setTimeout` for the exact distance to the next boundary, so the clock does not slide under load or fire a salvo after waking up.
-- Screen wake lock that re acquires after every visibility change, because Android drops the lock whenever the page goes hidden.
-- Pixel shift against OLED burn in: the clock moves by up to two pixels every three minutes, slowly enough that nobody sees it.
-- The time is real text in the DOM in an `aria-live` region, not just a stack of styled boxes.
-- `prefers-reduced-motion` is honored down to the pixel shift.
-- Portrait and landscape both get their own layout: the cards stack vertically in portrait and sit side by side in landscape.
-
-Five settings, stored in `localStorage` under `flip-clock-settings` and versioned with a migration chain so a rename cannot wipe your config: 24 hour time, seconds on/off, date on/off, theme preset, brightness. That is the complete list. Timers, alarms, weather, calendar, music control, accounts, sync and color pickers are deliberately out of scope.
-
-Honest limitation: true kiosk fullscreen, hiding the Android status and navigation bars, is not reachable through any web API and would need an MDM. A tap toggles the browser fullscreen mode, and that is the ceiling.
-
-## Setup on Android
-
-1. Open the site in Chrome and choose "Add to home screen". The manifest only takes effect once it runs as an installed app, and a second tab can no longer steal the wake lock.
-2. Keep the phone on the charger. Set the screen timeout to its longest value, turn adaptive brightness off and fix the brightness low. A low brightness reads better in a dark room and is the best protection against burn in.
-3. Optional, and more reliable than the Wake Lock API: enable "Stay awake while charging" in the Android developer options. It only works on the charger.
-
-Use an old phone you no longer carry, and take the case off. Charging and running the display at the same time produces heat, and sustained heat above 45 degrees Celsius damages the battery.
-
-## Architecture
-
-Design decisions and the reasoning behind them: [docs/architecture.md](docs/architecture.md).
-
-Note on the build: the adapter is `@sveltejs/adapter-node`, not `adapter-static`, and that is deliberate. With `prerender = true` and `ssr = false` the Node process only ever hands out a static prerendered shell, so there is no runtime SSR. The reason for the Node adapter is the deploy target, and it is explained in the architecture doc.
-
-## Contributing
-
-Read [CONTRIBUTING.md](CONTRIBUTING.md) first, especially the scope section: this app refuses features on purpose.
+Scope, conventions and what pull requests get declined: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE). The bundled font is Archivo under the SIL Open Font License, see [static/split-flap.LICENSE.txt](static/split-flap.LICENSE.txt).
