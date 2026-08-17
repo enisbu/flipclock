@@ -1,0 +1,67 @@
+# Flipclock
+
+A flip clock for the phone lying on your desk anyway, looked at and never operated.
+
+![Svelte 5](https://img.shields.io/badge/Svelte-5-FF3E00?style=flat&logo=svelte&logoColor=white)
+![SvelteKit 2](https://img.shields.io/badge/SvelteKit-2-FF3E00?style=flat&logo=svelte&logoColor=white)
+![Tailwind CSS 4](https://img.shields.io/badge/Tailwind-4-06B6D4?style=flat&logo=tailwindcss&logoColor=white)
+![MIT](https://img.shields.io/badge/License-MIT-6366F1?style=flat)
+
+[![The clock at 10:08 on black](static/og.png)](https://flip.enisdev.com)
+
+[Live](https://flip.enisdev.com) · [Android setup](docs/android-setup.md) · [Architecture](docs/architecture.md)
+
+At rest the screen carries the clock on black and nothing else. A swipe slides to the second face, a focus timer on the same plates: tap starts and pauses it, a hairline under the plates carries the progress, the phone buzzes at zero. On the clock, a tap toggles fullscreen. A swipe up from anywhere, or a press of about 600 ms, opens the settings, and they leave on their own.
+
+The clock has five settings: 24-hour time, seconds, a subline (date or your own words), theme preset, brightness. The focus face adds only its duration. Everything lives in `localStorage` and nowhere else.
+
+Once the page has loaded, the network is never needed again. A service worker caches everything, so the clock runs in airplane mode. No backend, no tracking, no CDN: every asset ships from the repo. Tailwind and shadcn-svelte for the UI; the digits are a 1.5 KB Roboto subset with equal widths, so nothing shifts as the numbers change.
+
+## On the desk
+
+A phone in a mount, the cable in, the screen never off. That is the whole setup.
+
+<p align="center">
+	<img src="docs/screens/mount.jpg" alt="The clock on a phone in a mount, on the shelf above the desk" width="420">
+</p>
+
+## Features
+
+| Clock | Focus | Settings |
+| --- | --- | --- |
+| ![The clock face with the date subline](docs/screens/clock.png) | ![The focus timer counting down](docs/screens/focus.png) | ![The settings drawer](docs/screens/settings.png) |
+
+- Mechanical flip on every change, true black behind it, four curated themes.
+- Focus timer on the same plates: tap starts and pauses, presets from 15 to 90 minutes, a hairline carries the remaining time, the phone buzzes at zero.
+- A subline under the clock: the date, or a line of your own.
+- Settings in a drawer that drags, snaps and leaves on its own.
+- OLED care built in: pixel shift, brightness dim, everything black stays truly off.
+
+## Setting up the phone
+
+Open [flip.enisdev.com](https://flip.enisdev.com) in Chrome, then install it from the menu and launch it from the icon, always:
+
+| Menu · Install and create shortcut | Install | Launch from the icon |
+| --- | --- | --- |
+| <img src="docs/screens/install-menu.jpg" alt="The Chrome menu with Install and create shortcut highlighted" width="240"> | <img src="docs/screens/install-dialog.jpg" alt="The install dialog showing the Flipclock icon" width="240"> | <img src="docs/screens/install-icon.jpg" alt="The installed Flipclock icon in the app drawer" width="240"> |
+
+An always-on display is a device setting, not a piece of code. In short: install the site as a PWA, enable "Stay awake" in the developer options, turn adaptive brightness off and fix it low, keep the phone on the cable. The full walkthrough, including OLED and heat notes: [docs/android-setup.md](docs/android-setup.md).
+
+## Development
+
+```bash
+pnpm install    # Node 22 LTS
+pnpm dev
+pnpm check      # svelte-check, 0 errors and 0 warnings
+pnpm test       # vitest, pure logic only
+pnpm build      # into build/
+pnpm start      # serve the build
+```
+
+The service worker has no real assets under `vite dev`, so test offline behaviour against `pnpm build && pnpm start`.
+
+Scope and conventions: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+MIT, see [LICENSE](LICENSE).

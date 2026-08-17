@@ -1,0 +1,212 @@
+/* Global base. The plate sizes hang off the viewport WIDTH alone.
+
+   Why width and never height: entering fullscreen on Android hides the URL bar
+   and the gesture bar, which grows the viewport height by 20 to 80px. Anything
+   derived from a height unit then recomputes and the whole clock visibly jumps
+   under the thumb that just tapped it. vh, dvh, svh and lvh all move by the same
+   amount across that transition, so picking a different height unit fixes
+   nothing. The width does not move, so the width is the basis.
+
+   The layout branch is chosen by aspect-ratio rather than by orientation, so a
+   viewport that is landscape-ish but not wide (a tablet, a split screen, a
+   desktop window) still gets the side by side row instead of a stack that is
+   taller than the screen. */
+
+:root {
+	/* A plate is a quiet rounded rectangle, slightly wider than tall. Both ratios
+	   are optical choices for the system digit stack, verified against a rendered
+	   screenshot rather than derived from font metrics: the pair of digits spans
+	   roughly three quarters of the plate width and two thirds of its height. */
+	--plate-aspect: 0.7;
+	--digit-of-card: 0.62;
+
+	/* The usable width: the viewport minus the symmetric horizontal inset the
+	   body applies. Every plate width derives from THIS, never from raw vw: in
+	   fullscreen a camera cutout raises one env() inset, and a 94vw plate is then
+	   wider than the padded box, overflows the far edge and gets its rounded
+	   corner clipped by overflow: hidden. */
+	--inset-x: max(env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
+	--usable-w: calc(100vw - 2 * var(--inset-x));
+
+	/* Stacked layout: one plate per row, so the plate may take nearly the full width.
+	   This branch only ever runs on a viewport taller than it is wide, so there is
+	   nothing to cap against the height: the plate takes the width it is given. */
+	--card-w-base: min(calc(0.94 * var(--usable-w)), 34rem);
+	--card-h-base: calc(var(--card-w-base) * var(--plate-aspect));
+	--digit-size-base: calc(var(--card-w-base) * var(--digit-of-card));
+
+	--card-w: var(--card-w-base);
+	--card-h: var(--card-h-base);
+	--digit-size: var(--digit-size-base);
+
+	--card-gap: clamp(0.6rem, 3vw, 1.6rem);
+	--card-radius: clamp(0.75rem, 2.2vw, 1.5rem);
+
+	/* Theme surface. The default is true OLED black, see below. */
+	--bg: #000;
+	--card-bg: #121212;
+	--digit-color: #ededed;
+	/* Quiet by design: the accent only ever styles controls inside the settings
+	   sheet, and on a device meant for a dark room it must not be the brightest
+	   surface in the app. */
+	--accent: #d4d4d4;
+
+	/* The seam: a hairline of background showing through between the two halves.
+	   Deliberately thin, it reads as a fold, not as machinery. */
+	--gap: clamp(2px, 0.35vw, 4px);
+	--flip-ms: 700ms;
+
+	color-scheme: dark;
+}
+
+/* Row layout: everything not clearly taller than it is wide, which is a landscape
+   phone but also a tablet, a split screen and any desktop window. The plates sit
+   side by side, so they divide the width between them. Going through the aspect
+   ratio rather than through orientation is what keeps a near square viewport from
+   stacking a column that is taller than the screen. */
+@media (min-aspect-ratio: 10 / 16) {
+	:root {
+		/* How many plate widths the row has to carry. Hours and minutes are one each,
+		   and the half size seconds plate adds 0.5, so +page.svelte raises this to 2.5
+		   while seconds are shown. Solving
+
+		     units * w + gaps * card-gap = usable width
+
+		   for w is what keeps the row inside the viewport in every combination.
+
+		   The default lives here, but the three size tokens below are deliberately NOT
+		   resolved at :root. A custom property is substituted in the scope of the
+		   element that uses it, so leaving the formula unresolved until .row lets the
+		   row override --row-units and actually change the outcome. */
+		--row-units: 2;
+		/* 94vw of usable width, matching the stacked branch, minus the gaps between the
+		   plates. The 30rem cap keeps a huge window from turning this into a billboard.
+		   Note: --row-gaps is NOT declared here. It derives from --row-units, and a
+		   custom property resolves in the scope that declares it, so a :root value
+		   would be computed against the default units and never see the override the
+		   row makes. It lives next to that override in +page.svelte. */
+		--row-width: calc(0.94 * var(--usable-w));
+		--row-cap: 30rem;
+
+		--card-gap: clamp(0.8rem, 4vw, 3rem);
+		--card-radius: clamp(0.6rem, 1.4vw, 1.5rem);
+		--gap: clamp(2px, 0.2vw, 4px);
+	}
+
+	/* Resolve the size tokens on the row itself, never at :root: a custom property
+	   is substituted in the scope that uses it, so only here can a row's own
+	   --row-units override (2 plates, 2.5 with the half size seconds) reach the
+	   formula. Shared by every face that lays plates in a row. */
+	.plate-row {
+		--row-gaps: calc(round(up, var(--row-units, 2), 1) - 1);
+		--card-w-base: min(
+			calc((var(--row-width) - var(--row-gaps) * var(--card-gap)) / var(--row-units, 2)),
+			var(--row-cap)
+		);
+		--card-h-base: calc(var(--card-w-base) * var(--plate-aspect));
+		--digit-size-base: calc(var(--card-w-base) * var(--digit-of-card));
+
+		--card-w: var(--card-w-base);
+		--card-h: var(--card-h-base);
+		--digit-size: var(--digit-size-base);
+	}
+}
+
+/* Wide and short: a desktop window or a 16:9 monitor, where a width derived plate is
+   taller than the screen. A phone in landscape is about 2.2 wide, so the cap only
+   engages past 2.5 and no device that hides browser chrome on a tap ever reaches this
+   branch. That keeps the fullscreen jump fixed where it matters while still fitting a
+   letterbox window. The height cap goes through --plate-aspect, so it holds at
+   whatever --row-units the row currently asks for. */
+@media (min-aspect-ratio: 5 / 2) {
+	:root {
+		--row-width: calc(0.98 * var(--usable-w));
+		--row-cap: min(30rem, calc(78dvh / var(--plate-aspect)));
+	}
+}
+
+/* Curated theme presets. No color picker: a handful of sets that are known to
+   look right on an always on display. The accent only ever appears inside the
+   settings sheet, the clock itself stays two colors: plate and digit. */
+[data-theme='warm'] {
+	--bg: #000;
+	--card-bg: #17120b;
+	--digit-color: #e8d5b0;
+	--accent: #d9b98a;
+}
+
+[data-theme='night'] {
+	--bg: #000;
+	--card-bg: #0a0a0a;
+	--digit-color: #4a4a4a;
+	--accent: #8a8a8a;
+}
+
+[data-theme='slate'] {
+	--bg: #0d1117;
+	--card-bg: #1c2128;
+	--digit-color: #adbac7;
+	--accent: #539bf5;
+}
+
+/* The digit face: Roboto instanced at weight 600 and subset to the ten digits,
+   1.5 KB, shipped from the repo and cached like every other asset. Self-hosting
+   makes the rendering predictable on every device instead of delegating the
+   entire product surface to whatever the platform resolves; on the Android
+   target this is the same face the system stack would pick anyway. All ten
+   digits carry the same advance by design. License sits next to the file. */
+@font-face {
+	font-family: 'Clock Digits';
+	src: url('/digits.woff2') format('woff2');
+	font-weight: 600;
+	font-style: normal;
+	font-display: block;
+}
+
+/* Bridge into the shadcn token layer: the app is permanently dark (class on
+   <html>), and the controls in the settings sheet follow the active theme's
+   accent instead of the neutral preset. */
+.dark {
+	--primary: var(--accent);
+	--ring: var(--accent);
+}
+
+html,
+body {
+	height: 100%;
+	margin: 0;
+	/* True black by default: switched off OLED pixels do not age. */
+	background: var(--bg);
+	color: var(--digit-color);
+	overflow: hidden;
+	font-family: ui-sans-serif, system-ui, sans-serif;
+	overscroll-behavior: none;
+	-webkit-user-select: none;
+	user-select: none;
+}
+
+body {
+	/* Horizontal insets are applied symmetrically: a camera cutout pads only one
+	   side, which would shove the centered clock off axis in fullscreen. The
+	   same value feeds --usable-w above, so the plates fit the padded box. */
+	padding: env(safe-area-inset-top) var(--inset-x) env(safe-area-inset-bottom) var(--inset-x);
+	box-sizing: border-box;
+}
+
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+/* Visible to screen readers only. */
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}

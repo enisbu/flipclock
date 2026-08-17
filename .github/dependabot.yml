@@ -1,0 +1,30 @@
+version: 2
+
+updates:
+  # The repo has zero runtime dependencies and a handful of devDependencies.
+  # Patch and minor updates are grouped into a single pull request so a weekly
+  # run does not open one pull request per package.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      dev-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+    commit-message:
+      prefix: build
+
+  # The CI workflow pins actions by major version, so this only moves when an
+  # action publishes a new major or a security fix.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: ci
