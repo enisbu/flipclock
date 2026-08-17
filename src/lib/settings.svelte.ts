@@ -2,7 +2,7 @@
 // The version lives inside the serialized data so that value and schema version
 // are written and read atomically, never as two keys that can drift apart.
 
-export const STORAGE_KEY = 'flip-clock-settings';
+const STORAGE_KEY = 'flip-clock-settings';
 
 /** Bump when the stored shape changes, and add the matching migration below. */
 export const CURRENT_VERSION = 1;

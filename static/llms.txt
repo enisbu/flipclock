@@ -1,0 +1,43 @@
+# Flipclock
+
+A flip clock webapp for a phone mounted in a holder on a desk: looked at, never
+operated. SvelteKit 2, Svelte 5 in forced runes mode, TypeScript, zero runtime
+dependencies, Node 22 LTS. Local first: no backend, no API, no tracking, no CDN
+font, and no network at all after the first load. At rest the screen shows only
+the clock on black. A tap toggles fullscreen, a long press of about 600 ms opens
+a settings overlay that dismisses itself. There is no visible control.
+
+## Source files
+
+- src/routes/+page.svelte: the clock itself. Composes the cards, runs the tick,
+  wake lock, OLED pixel shift, theme attribute, tap and long press handling.
+- src/routes/+layout.svelte: shell. Imports app.css, links icon and manifest.
+- src/routes/+layout.ts: prerender = true and ssr = false, so the build is a
+  static shell despite adapter-node.
+- src/lib/clock.ts: time reading, formatting, and the drift free tick that
+  recomputes the delay to the next boundary from Date on every step.
+- src/lib/settings.svelte.ts: localStorage persistence, versioned migration
+  chain, and the reactive settings singleton built on $state getters.
+- src/lib/wakelock.ts: screen wake lock with re acquire on visibilitychange.
+- src/lib/FlipCard.svelte: one two digit card, four layers, CSS keyframes.
+  Honors prefers-reduced-motion by jumping instead of flipping.
+- src/lib/SettingsOverlay.svelte: the long press overlay. Focus trap, Escape to
+  close, auto dismiss after idle, closes on an outside tap.
+- src/service-worker.ts: caches [...build, ...files] plus the prerendered shell.
+  Cache first for assets, network with cache fallback otherwise. No skipWaiting.
+- src/app.css: size tokens, theme presets via [data-theme], landscape media
+  query, sr-only.
+- src/lib/clock.test.ts, src/lib/settings.test.ts: vitest, pure logic only.
+
+## Settings
+
+localStorage key: flip-clock-settings. One JSON object with a version integer.
+Keys: use24h (boolean), showSeconds (boolean), showDate (boolean), theme
+('default' | 'warm' | 'night' | 'slate'), brightness (number, 0.2 to 1).
+The list is closed. No timers, alarms, weather, calendar, music, accounts, sync
+or color pickers.
+
+## More
+
+README.md for setup and features. docs/architecture.md for the decisions and
+their reasoning. CONTRIBUTING.md for the scope rules before opening a PR.

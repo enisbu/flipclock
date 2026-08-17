@@ -14,7 +14,7 @@
 	/** Pointer travel that cancels the press, so a stray drag does nothing. */
 	const MOVE_TOLERANCE_PX = 10;
 
-	let time = $state(readTime(true));
+	let time = $state(readTime(settings.use24h));
 	let shiftX = $state(0);
 	let shiftY = $state(0);
 	let showSettings = $state(false);
@@ -26,11 +26,20 @@
 
 	settings.persist();
 
-	const dateLabel = $derived(
-		new Intl.DateTimeFormat('en', { weekday: 'short', day: 'numeric', month: 'short' }).format(
-			new Date()
-		)
-	);
+	const dateFormat = new Intl.DateTimeFormat('en', {
+		weekday: 'short',
+		day: 'numeric',
+		month: 'short'
+	});
+
+	// Reading time.hours subscribes this derived to the tick, so the label is
+	// recomputed at every hour boundary and rolls over at midnight. Without that read
+	// it would be evaluated once and keep showing the previous day until a reload.
+	// The value itself is unused: the date comes from Date, like the tick does.
+	const dateLabel = $derived.by(() => {
+		void time.hours;
+		return dateFormat.format(new Date());
+	});
 
 	$effect(() => {
 		requestPersistentStorage();

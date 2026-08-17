@@ -1,61 +1,56 @@
 # Flipclock
 
-Eine Flip-Uhr als Webapp für ein Android-Handy im Hochformat, das dauerhaft in einer Halterung am Monitor-Riser steckt. Zeigt HH:MM im 24-Stunden-Format, sonst nichts.
+A flip clock webapp for a phone that sits in a holder on your desk: something you glance at, never operate.
 
-## Lokal starten
+![Svelte 5](https://img.shields.io/badge/Svelte-5-ff3e00)
+![SvelteKit 2](https://img.shields.io/badge/SvelteKit-2-ff3e00)
+![License: MIT](https://img.shields.io/badge/License-MIT-blue)
 
-```sh
-npm install
-npm run dev
-```
-
-Produktionsbau und Typprüfung:
+Live at [flip.enisdev.com](https://flip.enisdev.com).
 
 ```sh
-npm run build
-npm run check
+npm install     # Node 22 LTS
+npm run dev     # dev server
+npm run build   # production build into build/
+npm run check   # svelte-check, must report 0 errors and 0 warnings
+npm test        # vitest, pure logic only
 ```
 
-Der Bau ist statisch (`adapter-static`), das Ergebnis liegt in `build/` und lässt sich auf jedem Webspace ablegen. Für den Wake Lock braucht die Seite HTTPS, auf `localhost` geht es auch ohne.
+## Features
 
-## Was der Nutzer am Handy selbst einstellen muss
+At rest the screen shows the clock on black and nothing else. There is no gear, no toolbar, no panel. A tap toggles fullscreen, a long press of about 600 ms opens a settings overlay that dismisses itself after a few seconds of no interaction.
 
-Die Webapp hält das Display nur so weit wach, wie der Browser es erlaubt. Der zuverlässige Teil ist Systemsache:
+- Works offline forever. A service worker caches the shell and every build asset on first load, so the app runs in airplane mode indefinitely. No backend, no API, no tracking, no CDN font.
+- Zero runtime dependencies. A handful of source files, no framework beyond SvelteKit, no CSS framework, no animation library.
+- Drift free tick. Every tick recomputes the time from `Date` and arms a fresh `setTimeout` for the exact distance to the next boundary, so the clock does not slide under load or fire a salvo after waking up.
+- Screen wake lock that re acquires after every visibility change, because Android drops the lock whenever the page goes hidden.
+- Pixel shift against OLED burn in: the clock moves by up to two pixels every three minutes, slowly enough that nobody sees it.
+- The time is real text in the DOM in an `aria-live` region, not just a stack of styled boxes.
+- `prefers-reduced-motion` is honored down to the pixel shift.
+- Portrait and landscape both get their own layout: the cards stack vertically in portrait and sit side by side in landscape.
 
-1. **Als App installieren.** Im Chrome-Menü "Zum Startbildschirm hinzufügen". Nur dann greift der Fullscreen-Modus aus dem Manifest, und ein zweiter Tab kann den Wake Lock nicht mehr abräumen.
-2. **Entwickleroption "Display aktiv lassen".** Einstellungen, System, Über das Telefon, siebenmal auf die Build-Nummer tippen, dann in den Entwickleroptionen "Bildschirm beim Laden aktiv lassen" einschalten. Das wirkt nur am Ladekabel, ist dafür aber deutlich verlässlicher als die Wake-Lock-API.
-3. **Dauerhaft am Ladekabel.** Ohne Strom greift Punkt 2 nicht.
-4. **Bildschirm-Timeout** auf den längsten Wert stellen.
-5. **Adaptive Helligkeit aus**, Helligkeit fest auf 10 bis 20 Prozent. Sonst dimmt das Handy nachts auf null und die Uhr ist unlesbar. Die niedrige Helligkeit ist zugleich der wichtigste Schutz gegen Einbrennen.
-6. **Automatisches Drehen aus**, damit das Bild bei einer Berührung nicht kippt.
+Five settings, stored in `localStorage` under `flip-clock-settings` and versioned with a migration chain so a rename cannot wipe your config: 24 hour time, seconds on/off, date on/off, theme preset, brightness. That is the complete list. Timers, alarms, weather, calendar, music control, accounts, sync and color pickers are deliberately out of scope.
 
-Zur Hardware: nimm ein altes Gerät, das du nicht mehr täglich brauchst, und lass die Hülle weg. Laden und Display gleichzeitig erzeugen Wärme, und über 45 Grad leidet der Akku dauerhaft.
+Honest limitation: true kiosk fullscreen, hiding the Android status and navigation bars, is not reachable through any web API and would need an MDM. A tap toggles the browser fullscreen mode, and that is the ceiling.
 
-Vollbild ohne Status- und Navigationsleiste gibt Android einer Webseite nicht. Das ginge nur über ein MDM-System. Ein Tipp auf die Uhrfläche schaltet den Browser-Vollbildmodus um, mehr ist per Web-API nicht drin.
+## Setup on Android
 
-## Bewusste Entscheidungen
+1. Open the site in Chrome and choose "Add to home screen". The manifest only takes effect once it runs as an installed app, and a second tab can no longer steal the wake lock.
+2. Keep the phone on the charger. Set the screen timeout to its longest value, turn adaptive brightness off and fix the brightness low. A low brightness reads better in a dark room and is the best protection against burn in.
+3. Optional, and more reliable than the Wake Lock API: enable "Stay awake while charging" in the Android developer options. It only works on the charger.
 
-**Kein Tailwind.** Die ganze App besteht aus einer Karte und einer Seite. Die Maße hängen an ein paar CSS-Variablen, die Flip-Animation braucht eigene Keyframes. Utility-Klassen hätten hier nichts gekürzt, nur eine Abhängigkeit und einen Build-Schritt dazugestellt. Plain CSS in `app.css` plus scoped styles reicht.
+Use an old phone you no longer carry, and take the case off. Charging and running the display at the same time produces heat, and sustained heat above 45 degrees Celsius damages the battery.
 
-**Kein motion-sv.** Die Klappbewegung läuft einmal durch und wird nie unterbrochen. Genau dafür sind CSS-Keyframes gebaut. Eine Animationsbibliothek würde nur Bundle-Gewicht bringen, ohne dass ihre Stärke (unterbrechbare Federn) je zum Tragen käme.
+## Architecture
 
-**Driftfreier Tick statt `setInterval(1000)`.** Jeder Tick rechnet aus `Date` die Restzeit bis zur nächsten Minute und setzt dafür ein frisches `setTimeout`. Ein blindes Intervall läuft unter Last langsam weg. Weil die Zeit bei jedem Tick neu aus `Date` gelesen wird, holt die Uhr nach einer Pause im Hintergrund den echten Wert und feuert keine Salve von Einzelschritten nach.
+Design decisions and the reasoning behind them: [docs/architecture.md](docs/architecture.md).
 
-**Sekunden aus.** `SHOW_SECONDS` in `src/lib/clock.ts` steht auf `false`. Eine zweite laufende Zahl zerstört die Ruhe, die eine Flip-Uhr ausmacht. Wer sie will, setzt die Konstante auf `true`, dann erscheint eine halb so große, gedimmte Karte, und der Tick stellt sich automatisch auf Sekunden um.
+Note on the build: the adapter is `@sveltejs/adapter-node`, not `adapter-static`, and that is deliberate. With `prerender = true` and `ssr = false` the Node process only ever hands out a static prerendered shell, so there is no runtime SSR. The reason for the Node adapter is the deploy target, and it is explained in the architecture doc.
 
-**Schwarz auf ganzer Fläche.** Ausgeschaltete OLED-Pixel verbrauchen keinen Strom und altern nicht. Dazu wandert die Uhr alle drei Minuten um bis zu zwei Pixel, über acht Sekunden hinweg. Das sieht niemand, verteilt aber die Last auf den hellen Ziffern.
+## Contributing
 
-**Zeit steht als Text im DOM.** Ein `aria-live`-Absatz nennt die Uhrzeit im Klartext, die Karten selbst sind für Screenreader ausgeblendet. Die Uhr ist damit nicht bloß eine Grafik aus CSS-Kästen.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) first, especially the scope section: this app refuses features on purpose.
 
-**`prefers-reduced-motion` schaltet die Klappe ab.** Dann wechselt die Zahl hart, und auch der Pixel-Shift springt ohne Übergang.
+## License
 
-## Dateien
-
-| Datei | Zweck |
-|---|---|
-| `src/lib/clock.ts` | Zeit lesen, formatieren, driftfrei ticken. Hier stehen die Konstanten. |
-| `src/lib/wakelock.ts` | Wake Lock anfordern, nach Sichtbarkeitswechsel erneuern, freigeben. |
-| `src/lib/FlipCard.svelte` | Eine Karte mit zwei Ziffern, vier Schichten, CSS-Keyframes. |
-| `src/routes/+page.svelte` | Uhr zusammensetzen, Tick, Wake Lock, Pixel-Shift, Vollbild-Tipp. |
-| `src/app.css` | Globale Maße, echtes Schwarz, `sr-only`. |
-| `static/manifest.webmanifest` | PWA: Vollbild, Hochformat, schwarz. |
+MIT, see [LICENSE](LICENSE).
