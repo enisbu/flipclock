@@ -28,7 +28,9 @@ Two of them are static: a top half and a bottom half, always present. The other 
 
 The part that is genuinely non obvious is the centering. A numeral has to look like one glyph cut in half by the seam, not like two numerals stacked. The trick: the digit container is 200 percent of the height of its half and centers the glyph inside that doubled box. The half then clips it with `overflow: hidden`. The top half pins the container to `top: 0` and the bottom half to `bottom: 0`, so both show a different slice of the same centered glyph, and the numeral sits exactly on the edge. Change the height of `.digits` away from `200%` and the digits shift off the seam.
 
-A `.shade` overlay animates from `opacity: 0` to `0.6` over the departing flap. Without it the flip looks flat, because a real flap darkens as it turns away from the light. It is the whole depth effect.
+A `.shade` overlay darkens the flap that rotates away. Without it the flip looks flat, because a real flap darkens as it turns away from the light. It is the whole depth effect.
+
+The shade is a gradient, not a flat wash, and that is a consequence of the plate faces carrying gradients. A uniform black overlay was correct while the plates were flat rectangles. Once they were lit from the top, the falling half went evenly dark while the plate it had just left was still lit, and the two halves read as different materials. The shade now has the same shape as the face under it, strongest at the hinge where the plate turns away from the light and weakest at the free edge. The incoming bottom flap carries the mirrored version and fades out as it arrives, so both halves of the movement are shaded rather than only the departing one.
 
 The flap only exists while `flipping` is true. A timer clears it after the animation duration, and the static bottom half shows the old value for exactly that window so nothing flickers behind the moving flap.
 
@@ -70,6 +72,8 @@ Note that `build` and `files` are empty under `vite dev`. Offline behaviour has 
 
 The one non obvious part is the version field and the migration chain. The version lives inside the serialized object rather than in a second key, so the value and its schema version are always written and read together and cannot drift apart. `migrate()` walks the chain from the stored version up to the current one, then `coerce()` validates. Defaults are spread last so a key added in a later version arrives with its default instead of `undefined`. It costs about ten lines and it is what stops a future rename from silently wiping a real user's configuration. There is no server backup, so a bad migration is unrecoverable. That is also why the chain is unit tested.
 
+Version 2 added `hintSeen`, and its migration shows what the chain is for. The default is `false`, because a fresh install should be shown the long press once. But the 1 to 2 step sets it to `true`: anything already in storage belongs to someone who has been using the app, and pointing them at a gesture they may well already know is noise. Only an install with nothing stored at all falls through to the default. A migration that simply spread the default would have shown the hint to every existing user exactly once, which is the kind of quiet wrong that a version chain exists to prevent.
+
 Any failure at any point yields the defaults. A corrupt stored value must never leave someone staring at a blank screen. `loadSettings()` also guards on `typeof localStorage === 'undefined'`, which is load bearing: prerendering runs this module in Node, where the identifier does not exist and a bare `try`/`catch` around a bare reference is not enough.
 
 `navigator.storage.persist()` is called once at startup to ask the browser not to evict the origin under storage pressure. Chrome legitimately answers false until a site has earned engagement, so the result is informational and gates nothing.
@@ -80,7 +84,11 @@ Any failure at any point yields the defaults. A corrupt stored value must never 
 
 Both orientations are first class. Portrait stacks the two cards vertically so each one can claim the full width. Landscape puts them side by side so `HH:MM` reads left to right. That is one `@media (orientation: landscape)` block changing `flex-direction`, plus one on `:root` changing the size tokens.
 
-The size tokens are the reason a plain flip is not enough. In portrait they are `vmin` based, and `vmin` follows the width, so a card at `76vmin` fills the screen nicely. In landscape `vmin` follows the height instead, so two or three cards side by side would each claim 76 percent of the height as their width and overflow the wide axis. The landscape block therefore measures width against `vw` and height against `dvh`. `dvh` rather than `vh` because it holds up in a normal browser tab where the toolbar eats into the viewport.
+The size tokens are the reason a plain flip is not enough. Stacked, one plate per row, a plate may take nearly the full width. Side by side the plates divide the width between them, so the width has to be divided by how many of them there are.
+
+That count is `--row-units`, and it is the part worth understanding. Hours and minutes are one plate width each; the seconds plate is half size, so it adds another half. `.row` carries the value, 2 normally and 2.5 with seconds on, and solves `units * w + gaps * card-gap = usable width` for the plate width. The division deliberately happens on `.row` rather than on `:root`, because a custom property is substituted in the scope of the element that uses it: leaving the formula unresolved until `.row` is what lets the row override the count and actually change the result.
+
+Getting this wrong is not theoretical. The tokens were once a flat `44vw`, which is right for two plates and 82 pixels per side too wide the moment the seconds plate joins the row, putting half the hour plate off screen.
 
 There is no JavaScript in this path. Container queries need a containment context, and the clock is the page and owns the whole viewport, so there is nothing to contain. An `aspect-ratio` query would be equivalent and reads worse. A JS listener would add a reactive value to reproduce what one CSS rule already does, and it would render wrong before hydration.
 
@@ -106,9 +114,27 @@ There is no color picker, and not only because the product rules forbid visible 
 
 Flip speed and font are global, not theme tokens. They are not a theme concern, and putting them in the token set would invite presets that disagree about motion.
 
-The font is the system stack (`ui-sans-serif, system-ui, sans-serif`) at weight 700 with `font-variant-numeric: tabular-nums`. No font file ships. On the target device this resolves to Roboto, which has proper tabular figures at 700, so digits do not jump width as they change. Shipping Inter or Geist would be around 300 KB for eleven glyphs. Subsetting to digits and a colon would be about 5 KB and is defensible, but it adds a build step, a binary in the repo and a licence file to solve a problem nobody has reported. Pixel identical rendering across devices matters for marketing screenshots, not for a clock on one riser. Zero bytes and zero build steps wins until someone shows a device where it looks wrong.
+The plate face is a bundled file, `static/split-flap.woff2`: Archivo instanced at Expanded Black and subset to the digits, the colon and the space, 1.3 KB. It is built by `tools/build-font.py`, which is not part of `npm run build`, because the output is committed and the script only runs when the face itself changes.
+
+The subsetting is not the interesting part, the two edits after it are. Every digit is given the same advance with its ink centred inside it, which `font-variant-numeric: tabular-nums` cannot do: tabular figures equalise the advance but leave the sidebearings alone, so the ink of a `1` still sits off centre in its cell and the whole pair shifts as the minute changes. Then the vertical metrics are flattened onto the digit ink, so `line-height: 1` centres the ink in the line box by construction rather than by a magic nudge. Every plate constant in the CSS (`--plate-aspect`, `--digit-of-card`, the 200 percent centring box) is derived from that file's metrics.
+
+Which is exactly why the fallback needs care. Dropping through to a generic monospace stack gives a face with a 0.5em advance against the bundled 0.803em and a different line box, so the digits render at the wrong size and sit off the seam, overflowing the plate. Rather than carry a second set of layout constants, `app.css` declares a `Split Flap Fallback` face over local monospace fonts with `size-adjust`, `ascent-override` and `descent-override` that bend it onto the bundled metrics. Height is the binding constraint, not width: the bundled digits are wide and short and fill 0.656 of the plate height, while a normal monospace digit is narrow and tall and hits the top and bottom edges long before it runs out of width. The overrides are solved against measured render output, not computed on paper. The fallback does not look like the bundled face and is not meant to; it has to stay inside its plate and stay centred on the seam.
+
+Text that is not a digit sets its face explicitly. The date line is the case: the bundled file carries digits only, so a stack that reaches it first would render `AUG` in the fallback and `17` in the plate face, one line in two stroke weights.
 
 Brightness is applied as `opacity` on the stage. Be clear about what that is: a screen side dim, not backlight control. The web cannot touch the device backlight, and the device brightness setting remains the real control.
+
+The seconds plate is subordinate through size, not through a faded numeral. It once carried `opacity: 0.5` on its wrapper, which blended the white digits into the plate behind them and turned them grey: not a hierarchy, just a numeral that looked broken. The plate now keeps full contrast and only the digit colour is mixed down slightly, with the half size doing the work of saying this matters less.
+
+## The one time hint
+
+`src/routes/+page.svelte`
+
+Every setting hides behind a 600 ms long press, and nothing on the surface points at it. That is the product rule and it stays. The cost is that a first time viewer sees a clock, finds nothing else, and reasonably concludes there is nothing else: four themes, 12 or 24 hour, seconds, date and brightness all sit behind a gesture nobody mentioned.
+
+So a fresh install shows one line, `hold to customise`, low contrast and small near the bottom edge, for four seconds. Then it fades out over the best part of a second and unmounts, and the flag is written to storage so it never returns. It is not a dialog, not a tutorial, and not focusable. After it goes the surface is exactly as naked as before.
+
+Two details are load bearing. The flag is written when the hint is shown rather than after it fades, so someone who closes the tab two seconds in is not shown it again on the next load. And the effect reads that flag through `untrack`: reading it reactively would make the effect depend on the value it writes, so the write would tear the effect down and clear its own timers before the hint ever finished fading in. That was a real bug, caught by rendering it, not by reading the code.
 
 ## Why adapter-node and not adapter-static
 
