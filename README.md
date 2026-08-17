@@ -60,7 +60,15 @@ pnpm start      # serve the build
 
 The service worker has no real assets under `vite dev`, so test offline behaviour against `pnpm build && pnpm start`.
 
-Scope and conventions: [CONTRIBUTING.md](CONTRIBUTING.md).
+## Contributing
+
+Contributions are welcome. Bug fixes, a gesture that reads better on a real phone, a theme that holds up in a dark room, sharper Android notes: all of it lands well.
+
+The one thing to know first is what this clock refuses. It stays naked on purpose, so alarms, weather, calendar, music control, accounts and sync are out of scope no matter how well they are built. A pull request in those directions gets declined, and nobody enjoys that.
+
+Fork, branch off `main`, and before you open the pull request make sure `pnpm check` reports 0 errors and 0 warnings and `pnpm test` is green. Nothing tests the flip in a browser, so say which device you watched it on. For anything larger than a fix, open an issue first.
+
+Full scope and conventions: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
