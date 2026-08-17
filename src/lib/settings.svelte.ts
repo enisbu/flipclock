@@ -50,14 +50,17 @@ const MIGRATIONS: Record<number, (data: Record<string, unknown>) => Record<strin
 	2: (data) => ({ ...data, subline: data.showDate === true ? 'date' : 'off' })
 };
 
+function clamp(value: unknown, min: number, max: number, fallback: number): number {
+	if (typeof value !== 'number' || Number.isNaN(value)) return fallback;
+	return Math.min(max, Math.max(min, value));
+}
+
 function clampBrightness(value: unknown): number {
-	if (typeof value !== 'number' || Number.isNaN(value)) return DEFAULTS.brightness;
-	return Math.min(1, Math.max(0.2, value));
+	return clamp(value, 0.2, 1, DEFAULTS.brightness);
 }
 
 function clampFocusMinutes(value: unknown): number {
-	if (typeof value !== 'number' || Number.isNaN(value)) return DEFAULTS.focusMinutes;
-	return Math.min(180, Math.max(1, Math.round(value)));
+	return Math.round(clamp(value, 1, 180, DEFAULTS.focusMinutes));
 }
 
 function coerce(data: Record<string, unknown>): Settings {
@@ -125,69 +128,73 @@ class SettingsStore {
 		}
 	});
 
+	/* Read through one derived, never through #store.current per property: that getter
+	   hits localStorage and runs the whole parse, migrate and coerce chain on every
+	   single read, and the clock face reads six to eight fields per tick. */
+	#value = $derived(this.#store.current);
+
 	get use24h() {
-		return this.#store.current.use24h;
+		return this.#value.use24h;
 	}
 	set use24h(next: boolean) {
 		this.#store.current.use24h = next;
 	}
 
 	get showSeconds() {
-		return this.#store.current.showSeconds;
+		return this.#value.showSeconds;
 	}
 	set showSeconds(next: boolean) {
 		this.#store.current.showSeconds = next;
 	}
 
 	get subline() {
-		return this.#store.current.subline;
+		return this.#value.subline;
 	}
 	set subline(next: Subline) {
 		this.#store.current.subline = next;
 	}
 
 	get sublineText() {
-		return this.#store.current.sublineText;
+		return this.#value.sublineText;
 	}
 	set sublineText(next: string) {
 		this.#store.current.sublineText = next.slice(0, 60);
 	}
 
 	get face() {
-		return this.#store.current.face;
+		return this.#value.face;
 	}
 	set face(next: Face) {
 		this.#store.current.face = next;
 	}
 
 	get focusMinutes() {
-		return this.#store.current.focusMinutes;
+		return this.#value.focusMinutes;
 	}
 	set focusMinutes(next: number) {
 		this.#store.current.focusMinutes = clampFocusMinutes(next);
 	}
 
 	get theme() {
-		return this.#store.current.theme;
+		return this.#value.theme;
 	}
 	set theme(next: Theme) {
 		this.#store.current.theme = next;
 	}
 
 	get brightness() {
-		return this.#store.current.brightness;
+		return this.#value.brightness;
 	}
 	set brightness(next: number) {
 		this.#store.current.brightness = clampBrightness(next);
 	}
 
 	get hintSeen() {
-		return this.#store.current.hintSeen;
+		return this.#value.hintSeen;
 	}
 	set hintSeen(next: boolean) {
 		this.#store.current.hintSeen = next;
 	}
-
 }
 
 export const settings = new SettingsStore();

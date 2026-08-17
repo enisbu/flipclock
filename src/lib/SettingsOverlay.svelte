@@ -16,12 +16,22 @@
 
 	const IDLE_MS = 12000;
 
-	const SWATCHES: Record<Theme, { label: string; plate: string; digit: string }> = {
-		default: { label: 'Mono', plate: '#121212', digit: '#ededed' },
-		warm: { label: 'Warm', plate: '#17120b', digit: '#e8d5b0' },
-		night: { label: 'Night', plate: '#0a0a0a', digit: '#4a4a4a' },
-		slate: { label: 'Slate', plate: '#1c2128', digit: '#adbac7' }
+	/* Names only. The preview carries the theme's own data-theme attribute and renders
+	   from the CSS variables in app.css, so the colors live in one place. */
+	const THEME_LABELS: Record<Theme, string> = {
+		default: 'Mono',
+		warm: 'Warm',
+		night: 'Night',
+		slate: 'Slate'
 	};
+
+	/* Shared by the duration presets and the theme swatches: same card, same selected
+	   border, same caption. */
+	const CARD =
+		'flex flex-1 cursor-pointer flex-col items-center rounded-xl border bg-transparent px-1 pt-2.5 pb-2 transition-colors';
+	const cardBorder = (selected: boolean) => (selected ? 'border-accent' : 'border-white/10');
+	const cardCaption = (selected: boolean) =>
+		cn('text-xs font-medium', selected ? 'text-white/90' : 'text-white/65');
 
 	let { open = $bindable(false) }: { open?: boolean } = $props();
 
@@ -123,20 +133,12 @@
 									role="radio"
 									aria-checked={settings.focusMinutes === minutes}
 									onclick={() => (settings.focusMinutes = minutes)}
-									class={cn(
-										'flex flex-1 cursor-pointer flex-col items-center gap-0.5 rounded-xl border bg-transparent px-1 pt-2.5 pb-2 transition-colors',
-										settings.focusMinutes === minutes ? 'border-accent' : 'border-white/10'
-									)}
+									class={cn(CARD, 'gap-0.5', cardBorder(settings.focusMinutes === minutes))}
 								>
 									<span class="text-lg font-semibold tabular-nums" aria-hidden="true"
 										>{minutes}</span
 									>
-									<span
-										class={cn(
-											'text-xs font-medium',
-											settings.focusMinutes === minutes ? 'text-white/90' : 'text-white/65'
-										)}>min</span
-									>
+									<span class={cardCaption(settings.focusMinutes === minutes)}>min</span>
 								</button>
 							{/each}
 						</div>
@@ -155,24 +157,17 @@
 								type="button"
 								role="radio"
 								aria-checked={settings.theme === theme}
-								aria-label={SWATCHES[theme].label}
-								style="--plate: {SWATCHES[theme].plate}; --digit: {SWATCHES[theme].digit}"
+								aria-label={THEME_LABELS[theme]}
 								onclick={() => (settings.theme = theme)}
-								class={cn(
-									'flex flex-1 cursor-pointer flex-col items-center gap-1.5 rounded-xl border bg-transparent px-1 pt-2.5 pb-2 transition-colors',
-									settings.theme === theme ? 'border-accent' : 'border-white/10'
-								)}
+								class={cn(CARD, 'gap-1.5', cardBorder(settings.theme === theme))}
 							>
 								<span
-									class="relative flex h-9 w-12 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-(--plate) text-lg font-semibold text-(--digit) tabular-nums after:absolute after:top-1/2 after:left-0 after:h-px after:w-full after:-translate-y-1/2 after:bg-black/70"
+									data-theme={theme}
+									class="relative flex h-9 w-12 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-(--card-bg) text-lg font-semibold text-(--digit-color) tabular-nums after:absolute after:top-1/2 after:left-0 after:h-px after:w-full after:-translate-y-1/2 after:bg-black/70"
 									aria-hidden="true">8</span
 								>
-								<span
-									class={cn(
-										'text-xs font-medium',
-										settings.theme === theme ? 'text-white/90' : 'text-white/65'
-									)}
-									aria-hidden="true">{SWATCHES[theme].label}</span
+								<span class={cardCaption(settings.theme === theme)} aria-hidden="true"
+									>{THEME_LABELS[theme]}</span
 								>
 							</button>
 						{/each}

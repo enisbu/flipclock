@@ -11,7 +11,7 @@ import { build, files, version } from '$service-worker';
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
 const CACHE = `flip-clock-${version}`;
-const ASSETS = [...build, ...files];
+const ASSETS = new Set([...build, ...files]);
 
 /**
  * The prerendered shell. It appears in neither build nor files, so without
@@ -43,7 +43,7 @@ sw.addEventListener('fetch', (event) => {
 	const url = new URL(request.url);
 	if (url.protocol.startsWith('http') === false) return;
 
-	const isAsset = url.origin === location.origin && ASSETS.includes(url.pathname);
+	const isAsset = url.origin === location.origin && ASSETS.has(url.pathname);
 
 	event.respondWith(
 		(async () => {

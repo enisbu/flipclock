@@ -42,19 +42,9 @@
 	--card-gap: clamp(0.6rem, 3vw, 1.6rem);
 	--card-radius: clamp(0.75rem, 2.2vw, 1.5rem);
 
-	/* Theme surface. The default is true OLED black, see below. */
-	--bg: #000;
-	--card-bg: #121212;
-	--digit-color: #ededed;
-	/* Quiet by design: the accent only ever styles controls inside the settings
-	   sheet, and on a device meant for a dark room it must not be the brightest
-	   surface in the app. */
-	--accent: #d4d4d4;
-
 	/* The seam: a hairline of background showing through between the two halves.
 	   Deliberately thin, it reads as a fold, not as machinery. */
 	--gap: clamp(2px, 0.35vw, 4px);
-	--flip-ms: 700ms;
 
 	color-scheme: dark;
 }
@@ -127,7 +117,23 @@
 
 /* Curated theme presets. No color picker: a handful of sets that are known to
    look right on an always on display. The accent only ever appears inside the
-   settings sheet, the clock itself stays two colors: plate and digit. */
+   settings sheet, the clock itself stays two colors: plate and digit.
+
+   Every set is also reachable through its own [data-theme] selector, so the
+   swatch previews in the settings sheet render from these values instead of
+   carrying a second copy of the hex codes in the component. */
+:root,
+[data-theme='default'] {
+	/* True OLED black. */
+	--bg: #000;
+	--card-bg: #121212;
+	--digit-color: #ededed;
+	/* Quiet by design: the accent only ever styles controls inside the settings
+	   sheet, and on a device meant for a dark room it must not be the brightest
+	   surface in the app. */
+	--accent: #d4d4d4;
+}
+
 [data-theme='warm'] {
 	--bg: #000;
 	--card-bg: #17120b;
@@ -196,6 +202,22 @@ body {
 :focus-visible {
 	outline: 2px solid var(--accent);
 	outline-offset: 2px;
+}
+
+/* The plate row itself: shared by every face that stacks plates in a column and
+   turns them into a row on a wide enough viewport. Global, because the faces are
+   separate components and would otherwise each carry the same block. */
+.plate-row .row {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--card-gap);
+}
+
+@media (min-aspect-ratio: 10 / 16) {
+	.plate-row .row {
+		flex-direction: row;
+	}
 }
 
 /* Visible to screen readers only. */

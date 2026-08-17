@@ -17,10 +17,9 @@
 	const totalMs = $derived(settings.focusMinutes * 60_000);
 
 	$effect(() => {
-		const ms = settings.focusMinutes * 60_000;
 		clearTimeout(timer);
 		phase = 'idle';
-		remainingMs = ms;
+		remainingMs = totalMs;
 	});
 
 	function tick() {
@@ -90,13 +89,6 @@
 		gap: var(--card-gap);
 	}
 
-	.row {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--card-gap);
-	}
-
 	.track {
 		width: var(--card-w);
 		height: 5px;
@@ -142,10 +134,6 @@
 	}
 
 	@media (min-aspect-ratio: 10 / 16) {
-		.row {
-			flex-direction: row;
-		}
-
 		.track {
 			width: calc(var(--card-w) * 2 + var(--card-gap));
 		}

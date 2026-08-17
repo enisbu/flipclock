@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { reducedMotion } from '$lib/motion';
 
+	/* One source for the flip duration: the timeout that swaps the plate and the
+	   keyframes that move the flap both read this. */
 	const FLIP_MS = 700;
 
 	let { value }: { value: string } = $props();
@@ -38,7 +40,7 @@
 	});
 </script>
 
-<div class="card" aria-hidden="true">
+<div class="card" style="--flip-ms: {FLIP_MS}ms" aria-hidden="true">
 	<div class="half half--top">
 		<span class="digits">{value}</span>
 	</div>

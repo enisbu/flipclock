@@ -40,8 +40,9 @@
 	let pressTimer: ReturnType<typeof setTimeout> | undefined;
 	let pressOrigin: { x: number; y: number } | null = null;
 	let gestureOrigin: { x: number; y: number } | null = null;
-	let longPressFired = false;
-	let moved = false;
+	/* Set by the long press and by any drag: both mean the pointer up that follows
+	   is not a tap and must not reach the face. */
+	let handled = false;
 
 	const dateFormat = new Intl.DateTimeFormat('en', {
 		weekday: 'short',
@@ -49,8 +50,12 @@
 		month: 'short'
 	});
 
+	/* Gate on the hour, not on time itself: every tick assigns a fresh object, so a
+	   derived that reads time re-formats once a second. The hour is a string and only
+	   propagates when it actually changes. */
+	const hour = $derived(time.hours);
 	const dateLabel = $derived.by(() => {
-		void time.hours;
+		void hour;
 		return dateFormat.format(new Date());
 	});
 
@@ -137,13 +142,12 @@
 
 	function onPointerDown(event: PointerEvent) {
 		if (showSettings) return;
-		longPressFired = false;
-		moved = false;
+		handled = false;
 		pressOrigin = { x: event.clientX, y: event.clientY };
 		gestureOrigin = pressOrigin;
 		clearTimeout(pressTimer);
 		pressTimer = setTimeout(() => {
-			longPressFired = true;
+			handled = true;
 			pressOrigin = null;
 			showSettings = true;
 		}, LONG_PRESS_MS);
@@ -155,7 +159,7 @@
 			const dy = event.clientY - gestureOrigin.y;
 			if (dy < -SWIPE_UP_PX && Math.abs(dy) > Math.abs(dx)) {
 				gestureOrigin = null;
-				moved = true;
+				handled = true;
 				cancelPress();
 				showSettings = true;
 				return;
@@ -165,7 +169,7 @@
 		const dx = Math.abs(event.clientX - pressOrigin.x);
 		const dy = Math.abs(event.clientY - pressOrigin.y);
 		if (dx > MOVE_TOLERANCE_PX || dy > MOVE_TOLERANCE_PX) {
-			moved = true;
+			handled = true;
 			cancelPress();
 		}
 	}
@@ -185,9 +189,8 @@
 
 	function onStageClick() {
 		cancelPress();
-		if (longPressFired || moved) {
-			longPressFired = false;
-			moved = false;
+		if (handled) {
+			handled = false;
 			return;
 		}
 		if (showSettings) return;
@@ -270,7 +273,12 @@
 	</div>
 
 	{#if hintMounted}
-		<p class="hint" class:hint--on={hintVisible} aria-hidden="true">
+		<p
+			class="hint"
+			class:hint--on={hintVisible}
+			style="transition-duration: {HINT_FADE_MS}ms"
+			aria-hidden="true"
+		>
 			swipe up for settings · swipe for focus
 		</p>
 	{/if}
@@ -323,13 +331,6 @@
 		gap: clamp(0.6rem, 4.5vmin, 2.4rem);
 	}
 
-	.row {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--card-gap);
-	}
-
 	.seconds {
 		--card-w: calc(var(--card-w-base) / 2);
 		--card-h: calc(var(--card-h-base) / 2);
@@ -369,7 +370,8 @@
 		pointer-events: none;
 		opacity: 0;
 		transform: translateX(-50%);
-		transition: opacity 900ms ease;
+		transition-property: opacity;
+		transition-timing-function: ease;
 	}
 
 	.hint--on {
@@ -377,11 +379,6 @@
 	}
 
 	@media (min-aspect-ratio: 10 / 16) {
-		.row {
-			flex-direction: row;
-			align-items: center;
-		}
-
 		.row--seconds {
 			--row-units: 2.5;
 		}
