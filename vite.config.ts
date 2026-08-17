@@ -1,6 +1,6 @@
 import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
 	plugins: [
@@ -11,5 +11,11 @@ export default defineConfig({
 			},
 			adapter: adapter()
 		})
-	]
+	],
+	test: {
+		// Pure logic only. Rendering the 3D flip is a manual check on a real device,
+		// no headless browser can tell us whether it looks right.
+		include: ['src/**/*.test.ts'],
+		environment: 'node'
+	}
 });
