@@ -1,23 +1,17 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { IsDocumentVisible, useInterval, watch } from 'runed';
-	import * as Carousel from '$lib/components/ui/carousel';
-	import { cn } from '$lib/utils';
-	import type { CarouselAPI } from '$lib/components/ui/carousel/context';
+	import FaceCarousel from '$lib/FaceCarousel.svelte';
 	import FlipCard from '$lib/FlipCard.svelte';
 	import FocusFace from '$lib/FocusFace.svelte';
 	import SettingsOverlay from '$lib/SettingsOverlay.svelte';
 	import { readTime, spokenTime, startTicking } from '$lib/clock';
-	import { reducedMotion } from '$lib/motion';
-	import { settings, FACES, requestPersistentStorage } from '$lib/settings.svelte';
-	import { keepScreenAwake } from '$lib/wakelock';
+	import { createGestures } from '$lib/gestures';
+	import { settings, FACES, requestPersistentStorage, type Face } from '$lib/settings.svelte';
+	import { keepScreenAwake } from '$lib/wakelock.svelte';
 
 	const SHIFT_MS = 3 * 60 * 1000;
 	const SHIFT_MAX = 2;
-
-	const LONG_PRESS_MS = 600;
-	const MOVE_TOLERANCE_PX = 10;
-	const SWIPE_UP_PX = 64;
 
 	const HINT_MS = 4000;
 	const HINT_FADE_MS = 900;
@@ -28,21 +22,10 @@
 	let showSettings = $state(false);
 	let focusFace: FocusFace | undefined = $state();
 
-	let api: CarouselAPI | undefined = $state();
-	const faceIndex = $derived(FACES.indexOf(settings.face));
-	let settled = $state(true);
-	const reduced = $derived(reducedMotion.current);
 	const visible = new IsDocumentVisible();
 
 	let hintVisible = $state(false);
 	let hintMounted = $state(false);
-
-	let pressTimer: ReturnType<typeof setTimeout> | undefined;
-	let pressOrigin: { x: number; y: number } | null = null;
-	let gestureOrigin: { x: number; y: number } | null = null;
-	/* Set by the long press and by any drag: both mean the pointer up that follows
-	   is not a tap and must not reach the face. */
-	let handled = false;
 
 	const dateFormat = new Intl.DateTimeFormat('en', {
 		weekday: 'short',
@@ -67,23 +50,39 @@
 				: ''
 	);
 
-	function onApi(next: CarouselAPI | undefined) {
-		api = next;
-		next?.on('select', () => {
-			settings.face = FACES[next.selectedScrollSnap()] ?? 'clock';
-		});
-		next?.on('scroll', () => (settled = false));
-		next?.on('settle', () => (settled = true));
+	function toggleFullscreen() {
+		if (document.fullscreenElement) {
+			void document.exitFullscreen().catch(() => {});
+		} else {
+			void document.documentElement.requestFullscreen().catch(() => {});
+		}
 	}
 
-	$effect(() => {
-		const index = faceIndex;
-		if (api && api.selectedScrollSnap() !== index) api.scrollTo(index, reduced);
+	/* What a tap does, per face. Typed against Face, so a new face cannot be added
+	   without saying what tapping it means. */
+	const ACTIONS: Record<Face, () => void> = {
+		clock: toggleFullscreen,
+		focus: () => focusFace?.toggle()
+	};
+
+	function stepFace(delta: number) {
+		const next = FACES[FACES.indexOf(settings.face) + delta];
+		if (next) settings.face = next;
+	}
+
+	const gestures = createGestures({
+		longPressMs: 600,
+		moveTolerancePx: 10,
+		swipeUpPx: 64,
+		onLongPress: () => (showSettings = true),
+		onSwipeUp: () => (showSettings = true)
 	});
 
 	$effect(() => {
 		requestPersistentStorage();
 	});
+
+	keepScreenAwake();
 
 	$effect(() => {
 		if (untrack(() => settings.hintSeen)) return;
@@ -124,8 +123,6 @@
 		}
 	});
 
-	$effect(() => keepScreenAwake());
-
 	$effect(() => {
 		const root = document.documentElement;
 		if (settings.theme === 'default') {
@@ -135,80 +132,28 @@
 		}
 	});
 
-	function cancelPress() {
-		clearTimeout(pressTimer);
-		pressOrigin = null;
-	}
-
 	function onPointerDown(event: PointerEvent) {
 		if (showSettings) return;
-		handled = false;
-		pressOrigin = { x: event.clientX, y: event.clientY };
-		gestureOrigin = pressOrigin;
-		clearTimeout(pressTimer);
-		pressTimer = setTimeout(() => {
-			handled = true;
-			pressOrigin = null;
-			showSettings = true;
-		}, LONG_PRESS_MS);
+		gestures.down({ x: event.clientX, y: event.clientY });
 	}
 
 	function onPointerMove(event: PointerEvent) {
-		if (gestureOrigin && !showSettings) {
-			const dx = event.clientX - gestureOrigin.x;
-			const dy = event.clientY - gestureOrigin.y;
-			if (dy < -SWIPE_UP_PX && Math.abs(dy) > Math.abs(dx)) {
-				gestureOrigin = null;
-				handled = true;
-				cancelPress();
-				showSettings = true;
-				return;
-			}
-		}
-		if (!pressOrigin) return;
-		const dx = Math.abs(event.clientX - pressOrigin.x);
-		const dy = Math.abs(event.clientY - pressOrigin.y);
-		if (dx > MOVE_TOLERANCE_PX || dy > MOVE_TOLERANCE_PX) {
-			handled = true;
-			cancelPress();
-		}
-	}
-
-	function onPointerEnd() {
-		cancelPress();
-		gestureOrigin = null;
-	}
-
-	function toggleFullscreen() {
-		if (document.fullscreenElement) {
-			void document.exitFullscreen().catch(() => {});
-		} else {
-			void document.documentElement.requestFullscreen().catch(() => {});
-		}
+		if (showSettings) return;
+		gestures.move({ x: event.clientX, y: event.clientY });
 	}
 
 	function onStageClick() {
-		cancelPress();
-		if (handled) {
-			handled = false;
-			return;
-		}
-		if (showSettings) return;
-		if (settings.face === 'focus') {
-			focusFace?.toggle();
-		} else {
-			toggleFullscreen();
-		}
+		if (gestures.consumeHandled() || showSettings) return;
+		ACTIONS[settings.face]();
 	}
 
 	function onStageKeydown(event: KeyboardEvent) {
 		if (showSettings) return;
-		if (event.key === 'ArrowRight') settings.face = 'focus';
-		if (event.key === 'ArrowLeft') settings.face = 'clock';
+		if (event.key === 'ArrowRight') stepFace(1);
+		if (event.key === 'ArrowLeft') stepFace(-1);
 		if (event.key === 'Enter' || event.key === ' ') {
 			event.preventDefault();
-			if (settings.face === 'focus') focusFace?.toggle();
-			else toggleFullscreen();
+			ACTIONS[settings.face]();
 		}
 	}
 </script>
@@ -224,52 +169,13 @@
 	style="--brightness: {settings.brightness}"
 	onpointerdown={onPointerDown}
 	onpointermove={onPointerMove}
-	onpointerup={onPointerEnd}
-	onpointercancel={onPointerEnd}
+	onpointerup={gestures.end}
+	onpointercancel={gestures.cancel}
 	onclick={onStageClick}
 	role="presentation"
 >
 	<div class="shift" style="transform: translate({shiftX}px, {shiftY}px)">
-		<Carousel.Root
-			class="h-full"
-			opts={{ duration: reduced ? 0 : 20, startIndex: faceIndex }}
-			setApi={onApi}
-		>
-			<Carousel.Content class="ms-0 h-full">
-				<Carousel.Item
-					class={cn(
-						'face h-full basis-full ps-0',
-						settled && settings.face !== 'clock' && 'invisible'
-					)}
-					aria-hidden={settings.face !== 'clock'}
-				>
-					<div class="clock plate-row">
-						<div class="row plate-row" class:row--seconds={settings.showSeconds}>
-							<FlipCard value={time.hours} />
-							<FlipCard value={time.minutes} />
-							{#if settings.showSeconds}
-								<div class="seconds">
-									<FlipCard value={time.seconds} />
-								</div>
-							{/if}
-						</div>
-						{#if sublineLabel}
-							<p class="subline" aria-hidden="true">{sublineLabel}</p>
-						{/if}
-					</div>
-				</Carousel.Item>
-
-				<Carousel.Item
-					class={cn(
-						'face h-full basis-full ps-0',
-						settled && settings.face !== 'focus' && 'invisible'
-					)}
-					aria-hidden={settings.face !== 'focus'}
-				>
-					<FocusFace bind:this={focusFace} />
-				</Carousel.Item>
-			</Carousel.Content>
-		</Carousel.Root>
+		<FaceCarousel faces={FACES} bind:current={settings.face} face={faceView} />
 	</div>
 
 	{#if hintMounted}
@@ -283,6 +189,27 @@
 		</p>
 	{/if}
 </div>
+
+{#snippet faceView(face: Face)}
+	{#if face === 'clock'}
+		<div class="clock plate-row">
+			<div class="row plate-row" class:row--seconds={settings.showSeconds}>
+				<FlipCard value={time.hours} />
+				<FlipCard value={time.minutes} />
+				{#if settings.showSeconds}
+					<div class="seconds">
+						<FlipCard value={time.seconds} />
+					</div>
+				{/if}
+			</div>
+			{#if sublineLabel}
+				<p class="subline" aria-hidden="true">{sublineLabel}</p>
+			{/if}
+		</div>
+	{:else if face === 'focus'}
+		<FocusFace bind:this={focusFace} />
+	{/if}
+{/snippet}
 
 <p class="sr-only" aria-live="polite">
 	{spokenTime(time, settings.showSeconds)}{settings.subline === 'date' ? `, ${dateLabel}` : ''}

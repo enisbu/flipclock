@@ -120,6 +120,21 @@ export function requestPersistentStorage(): void {
 	void navigator.storage.persist().catch(() => false);
 }
 
+/* Writes land in the buffer first and reach storage once the burst is over. The
+   brightness slider fires on every frame of a drag, and every write serializes the
+   whole settings object into localStorage. */
+const PERSIST_DELAY_MS = 250;
+
+/** Fields that constrain what a caller may write. Everything else is stored as given. */
+const COERCE: { [K in keyof Settings]?: (value: Settings[K]) => Settings[K] } = {
+	sublineText: (value) => value.slice(0, 60),
+	focusMinutes: clampFocusMinutes,
+	brightness: clampBrightness
+};
+
+/** Everything a caller may read and write. The version is the store's own business. */
+const FIELDS = (Object.keys(DEFAULTS) as (keyof Settings)[]).filter((key) => key !== 'version');
+
 class SettingsStore {
 	#store = new PersistedState<Settings>(STORAGE_KEY, loadSettings(), {
 		serializer: {
@@ -132,69 +147,44 @@ class SettingsStore {
 	   hits localStorage and runs the whole parse, migrate and coerce chain on every
 	   single read, and the clock face reads six to eight fields per tick. */
 	#value = $derived(this.#store.current);
+	#pending = $state<Partial<Settings>>({});
+	#timer: ReturnType<typeof setTimeout> | undefined;
 
-	get use24h() {
-		return this.#value.use24h;
-	}
-	set use24h(next: boolean) {
-		this.#store.current.use24h = next;
-	}
+	constructor() {
+		for (const field of FIELDS) {
+			Object.defineProperty(this, field, {
+				get: () => this.#pending[field] ?? this.#value[field],
+				set: (next) => this.#write(field, next),
+				enumerable: true
+			});
+		}
 
-	get showSeconds() {
-		return this.#value.showSeconds;
-	}
-	set showSeconds(next: boolean) {
-		this.#store.current.showSeconds = next;
-	}
-
-	get subline() {
-		return this.#value.subline;
-	}
-	set subline(next: Subline) {
-		this.#store.current.subline = next;
-	}
-
-	get sublineText() {
-		return this.#value.sublineText;
-	}
-	set sublineText(next: string) {
-		this.#store.current.sublineText = next.slice(0, 60);
+		// A buffered write must not die with the tab.
+		if (typeof document !== 'undefined') {
+			document.addEventListener('visibilitychange', () => {
+				if (document.visibilityState === 'hidden') this.#commit();
+			});
+			window.addEventListener('pagehide', () => this.#commit());
+		}
 	}
 
-	get face() {
-		return this.#value.face;
-	}
-	set face(next: Face) {
-		this.#store.current.face = next;
-	}
-
-	get focusMinutes() {
-		return this.#value.focusMinutes;
-	}
-	set focusMinutes(next: number) {
-		this.#store.current.focusMinutes = clampFocusMinutes(next);
+	#write<K extends keyof Settings>(field: K, next: Settings[K]) {
+		const coerce = COERCE[field] as ((value: Settings[K]) => Settings[K]) | undefined;
+		this.#pending[field] = coerce ? coerce(next) : next;
+		clearTimeout(this.#timer);
+		this.#timer = setTimeout(() => this.#commit(), PERSIST_DELAY_MS);
 	}
 
-	get theme() {
-		return this.#value.theme;
-	}
-	set theme(next: Theme) {
-		this.#store.current.theme = next;
-	}
-
-	get brightness() {
-		return this.#value.brightness;
-	}
-	set brightness(next: number) {
-		this.#store.current.brightness = clampBrightness(next);
-	}
-
-	get hintSeen() {
-		return this.#value.hintSeen;
-	}
-	set hintSeen(next: boolean) {
-		this.#store.current.hintSeen = next;
+	#commit() {
+		clearTimeout(this.#timer);
+		const pending = this.#pending;
+		if (Object.keys(pending).length === 0) return;
+		this.#pending = {};
+		this.#store.current = { ...this.#value, ...pending };
 	}
 }
 
-export const settings = new SettingsStore();
+/* The fields are defined in the constructor, so the class itself carries none of them. */
+type Settable = Omit<Settings, 'version'>;
+
+export const settings = new SettingsStore() as SettingsStore & Settable;
