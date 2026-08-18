@@ -46,7 +46,8 @@ a settings overlay that dismisses itself. There is no visible control.
   Cache first for assets, network with cache fallback otherwise. No skipWaiting.
 - src/app.css: size token inputs, theme presets via [data-theme], the shared
   plate row, aspect ratio media queries, sr-only, the digit @font-face.
-- static/digits.woff2: Roboto at 600, digits only, 1.5 KB, equal advances.
+- src/lib/fonts/digits.woff2: Roboto at 600, digits only, 1.5 KB, equal advances.
+  Vite inlines it into the stylesheet, so it ships as base64, not as a request.
 - src/lib/*.test.ts: vitest, pure logic only (clock, gestures, settings).
 - e2e/clock.spec.ts: playwright against the production build. Faces, gestures,
   settings, persistence, offline.

@@ -160,10 +160,13 @@
    makes the rendering predictable on every device instead of delegating the
    entire product surface to whatever the platform resolves; on the Android
    target this is the same face the system stack would pick anyway. All ten
-   digits carry the same advance by design. License sits next to the file. */
+   digits carry the same advance by design. It lives under src/, not in static/,
+   so vite inlines it into this stylesheet: 1.5 KB is below the inline limit, and
+   an inlined face costs no second request and needs no preload hint. License:
+   static/digits.LICENSE.txt. */
 @font-face {
 	font-family: 'Clock Digits';
-	src: url('/digits.woff2') format('woff2');
+	src: url('./lib/fonts/digits.woff2') format('woff2');
 	font-weight: 600;
 	font-style: normal;
 	font-display: block;
