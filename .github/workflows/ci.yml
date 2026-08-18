@@ -21,10 +21,10 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v7
 
+      # No version here: package.json's packageManager field is the single source,
+      # and passing both makes the action refuse with ERR_PNPM_BAD_PM_VERSION.
       - name: Set up pnpm
         uses: pnpm/action-setup@v6
-        with:
-          version: 10
 
       - name: Set up Node 24
         uses: actions/setup-node@v7
@@ -54,10 +54,10 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v7
 
+      # No version here: package.json's packageManager field is the single source,
+      # and passing both makes the action refuse with ERR_PNPM_BAD_PM_VERSION.
       - name: Set up pnpm
         uses: pnpm/action-setup@v6
-        with:
-          version: 10
 
       - name: Set up Node 24
         uses: actions/setup-node@v7
