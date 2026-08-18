@@ -11,7 +11,7 @@ A flip clock for the phone lying on your desk anyway, looked at and never operat
 
 [Live](https://flip.enisdev.com) · [Android setup](docs/android-setup.md) · [Architecture](docs/architecture.md)
 
-The screen shows the clock on black, nothing else. Swipe for the second face, a focus timer on the same plates. A tap toggles fullscreen on the clock and starts or pauses the timer. Swipe up or hold for 600 ms to open the settings, which close themselves again.
+The screen shows the clock on black, nothing else. Swipe for the second face, a focus timer counting down on the same flip cards. A tap toggles fullscreen on the clock and starts or pauses the timer. Swipe up or hold for 600 ms to open the settings, which close themselves again.
 
 Five settings for the clock, one for the timer. All of it in `localStorage`, nowhere else.
 
@@ -32,7 +32,7 @@ A phone in a mount, the cable in, the screen never off. That is the whole setup.
 | ![The clock face with the date subline](docs/screens/clock.png) | ![The focus timer counting down](docs/screens/focus.png) | ![The settings drawer](docs/screens/settings.png) |
 
 - Mechanical flip on every change, true black behind it, four curated themes.
-- Focus timer on the same plates: tap starts and pauses, presets from 15 to 90 minutes, a hairline carries the remaining time, the phone buzzes at zero.
+- Focus timer on the same cards: tap starts and pauses, presets from 15 to 90 minutes, a hairline carries the remaining time, the phone buzzes at zero.
 - A subline under the clock: the date, or a line of your own.
 - Settings in a drawer that drags, snaps and leaves on its own.
 - OLED care built in: pixel shift, brightness dim, everything black stays truly off.
