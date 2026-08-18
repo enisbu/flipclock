@@ -29,13 +29,14 @@ pnpm check        # svelte-check, must be 0 errors and 0 warnings
 pnpm check:watch
 pnpm test         # vitest, single run
 pnpm test:watch
+pnpm test:e2e     # playwright, builds and serves the app itself
 ```
 
-`pnpm check` at 0/0 and a passing `pnpm test` are the bar for any change.
+`pnpm check` at 0/0 plus a passing `pnpm test` and `pnpm test:e2e` are the bar for any change.
 
 ## Testing
 
-Vitest covers pure logic only: time formatting, the tick schedule against fake timers, the settings migration chain. Whether the 3D flip renders correctly is a manual check on a real Android device, and no headless browser replaces it.
+Vitest covers pure logic: time formatting, the tick schedule against fake timers, the gesture recogniser, the settings migration chain. Playwright covers behaviour in `e2e/`, running against the production build it starts itself: faces, gestures, settings, persistence, offline. Whether the 3D flip LOOKS right is still a manual check on a real Android device, and no headless browser replaces that. `pnpm check`, `pnpm test` and `pnpm test:e2e` are the bar.
 
 ## Svelte MCP
 

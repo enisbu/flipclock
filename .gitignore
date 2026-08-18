@@ -25,3 +25,9 @@ vite.config.ts.timestamp-*
 
 # Local design-review artifacts (screenshots, sidecar)
 .impeccable/
+
+# playwright
+/test-results
+/playwright-report
+/blob-report
+/.playwright

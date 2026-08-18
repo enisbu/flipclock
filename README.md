@@ -53,7 +53,8 @@ An always-on display is a device setting, not a piece of code. In short: install
 pnpm install    # Node 22 LTS
 pnpm dev
 pnpm check      # svelte-check, 0 errors and 0 warnings
-pnpm test       # vitest, pure logic only
+pnpm test       # vitest, pure logic
+pnpm test:e2e   # playwright against the build
 pnpm build      # into build/
 pnpm start      # serve the build
 ```
@@ -66,7 +67,7 @@ Contributions are welcome. Bug fixes, a gesture that reads better on a real phon
 
 The one thing to know first is what this clock refuses. It stays naked on purpose, so alarms, weather, calendar, music control, accounts and sync are out of scope no matter how well they are built. A pull request in those directions gets declined, and nobody enjoys that.
 
-Fork, branch off `main`, and before you open the pull request make sure `pnpm check` reports 0 errors and 0 warnings and `pnpm test` is green. Nothing tests the flip in a browser, so say which device you watched it on. For anything larger than a fix, open an issue first.
+Fork, branch off `main`, and before you open the pull request make sure `pnpm check` reports 0 errors and 0 warnings and both `pnpm test` and `pnpm test:e2e` are green. The browser tests cover behaviour, not looks, so say which device you watched the flip on. For anything larger than a fix, open an issue first.
 
 Full scope and conventions: [CONTRIBUTING.md](CONTRIBUTING.md).
 

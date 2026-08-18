@@ -15,8 +15,9 @@ export default defineConfig({
 		})
 	],
 	test: {
-		// Pure logic only. Rendering the 3D flip is a manual check on a real device,
-		// no headless browser can tell us whether it looks right.
+		// Pure logic only. Behaviour in a browser lives in e2e/ and runs under
+		// playwright; whether the 3D flip LOOKS right stays a manual check on a
+		// real device, no headless browser can tell us that.
 		include: ['src/**/*.test.ts'],
 		environment: 'node'
 	}
