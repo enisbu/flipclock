@@ -11,7 +11,7 @@ A flip clock for the phone lying on your desk anyway, looked at and never operat
 
 [Live](https://flip.enisdev.com) · [Android setup](docs/android-setup.md) · [Architecture](docs/architecture.md)
 
-<img src="docs/screens/mount.jpg" alt="The clock on a phone in a mount, on the shelf above the desk" align="right" width="300">
+<img src="docs/screens/mount.jpg" alt="The clock on a phone in a mount, on the shelf above the desk" align="right" width="250">
 
 The screen shows the clock on black, nothing else. Swipe sideways and it becomes a focus timer, counting down in the same big digits. A tap toggles fullscreen on the clock and starts or pauses the timer. Swipe up or hold for 600 ms to open the settings, which close themselves again.
 
