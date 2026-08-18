@@ -19,7 +19,7 @@ After the first load the app needs no network. A service worker caches everythin
 
 A phone in a mount, the cable in, the screen never off. That is the whole setup.
 
-![The clock on a phone in a mount, on the shelf above the desk](docs/screens/mount.jpg)
+<img src="docs/screens/mount.jpg" alt="The clock on a phone in a mount, on the shelf above the desk" width="420">
 
 ## Features
 
