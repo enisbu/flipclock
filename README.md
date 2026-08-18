@@ -11,19 +11,17 @@ A flip clock for the phone lying on your desk anyway, looked at and never operat
 
 [Live](https://flip.enisdev.com) · [Android setup](docs/android-setup.md) · [Architecture](docs/architecture.md)
 
+<img src="docs/screens/mount.jpg" alt="The clock on a phone in a mount, on the shelf above the desk" align="right" width="300">
+
 The screen shows the clock on black, nothing else. Swipe sideways and it becomes a focus timer, counting down in the same big digits. A tap toggles fullscreen on the clock and starts or pauses the timer. Swipe up or hold for 600 ms to open the settings, which close themselves again.
 
 Five settings for the clock, one for the timer. All of it in `localStorage`, nowhere else.
 
 After the first load the app needs no network. A service worker caches everything, so it works in airplane mode. No backend, no tracking, no CDN, every asset ships from the repo.
 
-## On the desk
-
 A phone in a mount, the cable in, the screen never off. That is the whole setup.
 
-<p align="center">
-	<img src="docs/screens/mount.jpg" alt="The clock on a phone in a mount, on the shelf above the desk" width="420">
-</p>
+<br clear="all">
 
 ## Features
 
