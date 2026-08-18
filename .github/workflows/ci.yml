@@ -78,14 +78,11 @@ jobs:
           path: ~/.cache/ms-playwright
           key: chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
+      # No --with-deps: the ubuntu runner image already carries the libraries
+      # chromium links against, and installing them anyway costs 26 seconds of apt.
       - name: Install Chromium
         if: steps.chromium.outputs.cache-hit != 'true'
-        run: pnpm exec playwright install --with-deps chromium
-
-      # The cache holds the browser, not the apt packages it links against.
-      - name: Install the system libraries
-        if: steps.chromium.outputs.cache-hit == 'true'
-        run: pnpm exec playwright install-deps chromium
+        run: pnpm exec playwright install chromium
 
       # Runs against the production build, which the playwright config starts
       # itself. The service worker has no real assets under vite dev.
