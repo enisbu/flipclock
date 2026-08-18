@@ -3,7 +3,7 @@
 The app holds a screen wake lock, and in practice that is enough: installed as a PWA, on a charger, with battery saver off, the screen simply stays on. The Wake Lock API is a request though, not a guarantee, and the lock screen, an incoming call or battery saver can revoke it. The steps below make it survive those moments. Five minutes, once.
 
 1. **Install as a PWA.** Chrome menu, "Add to Home Screen", then launch from the icon, not from a tab. Only an installed app gets fullscreen display and its own window, so another tab cannot take the wake lock away.
-2. **Keep it on the charger.** An always-on display drains a battery in hours.
+2. **Keep it on the charger.** Not for the screen, the wake lock holds on battery too, but a lit display empties a phone in hours.
 3. **Screen timeout to maximum**, as a backstop for the moments the wake lock is not held.
 4. **Optional, if the screen still sleeps: developer options, "Stay awake".** Tap the build number in About phone seven times to unlock developer options, then enable "Stay awake" (on some devices "Keep screen on while charging"). It beats anything JavaScript can do, but it only works on a cable, and most phones never need it.
 5. **Adaptive brightness off, slider to 10 to 20 percent.** Adaptive dims the clock unreadable in a dark room. The low fixed value is also the main defense against OLED burn-in: a static image at eight hours a day burns in within months, and pixels age two to three times faster at full brightness. The app's pixel shift only helps at the margin.
