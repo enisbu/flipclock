@@ -50,7 +50,7 @@ An always-on display is a device setting, not a piece of code. In short: install
 ## Development
 
 ```bash
-pnpm install    # Node 22 LTS
+pnpm install    # Node 24 LTS
 pnpm dev
 pnpm check      # svelte-check, 0 errors and 0 warnings
 pnpm test       # vitest, pure logic

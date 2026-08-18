@@ -3,7 +3,7 @@
 A flip clock webapp for a phone mounted in a holder on a desk: looked at, never
 operated. Two faces in a swipe carousel: the clock and a focus timer on the
 same plates. SvelteKit 2, Svelte 5 in forced runes mode, TypeScript, Tailwind
-v4, shadcn-svelte, Node 22 LTS. Local first: no backend, no API, no tracking,
+v4, shadcn-svelte, Node 24 LTS. Local first: no backend, no API, no tracking,
 no CDN, and no network at all after the first load. At rest the screen shows only
 the clock on black. A tap toggles fullscreen, a swipe up from anywhere or a
 long press of about 600 ms opens

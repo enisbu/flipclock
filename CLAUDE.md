@@ -4,7 +4,7 @@ Agent contract for this repository. Read it before you change anything here.
 
 ## What this is
 
-A flip clock webapp for a phone that lives in a holder on a desk. It is looked at, never operated. SvelteKit 2 with Svelte 5, Tailwind v4, shadcn-svelte for controls, a small handful of source files, Node 22 LTS. Live at flip.enisdev.com.
+A flip clock webapp for a phone that lives in a holder on a desk. It is looked at, never operated. SvelteKit 2 with Svelte 5, Tailwind v4, shadcn-svelte for controls, a small handful of source files, Node 24 LTS. Live at flip.enisdev.com.
 
 ## Hard rules
 
@@ -20,7 +20,7 @@ A flip clock webapp for a phone that lives in a holder on a desk. It is looked a
 ## Commands
 
 ```sh
-pnpm install      # Node 22 LTS
+pnpm install      # Node 24 LTS
 pnpm dev          # dev server
 pnpm build        # production build into build/
 pnpm start        # serve the build (node build/index.js)
