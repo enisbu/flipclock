@@ -11,11 +11,11 @@ A flip clock for the phone lying on your desk anyway, looked at and never operat
 
 [Live](https://flip.enisdev.com) · [Android setup](docs/android-setup.md) · [Architecture](docs/architecture.md)
 
-At rest the screen carries the clock on black and nothing else. A swipe slides to the second face, a focus timer on the same plates: tap starts and pauses it, a hairline under the plates carries the progress, the phone buzzes at zero. On the clock, a tap toggles fullscreen. A swipe up from anywhere, or a press of about 600 ms, opens the settings, and they leave on their own.
+The screen shows the clock on black, nothing else. Swipe for the second face, a focus timer on the same plates. A tap toggles fullscreen on the clock and starts or pauses the timer. Swipe up or hold for 600 ms to open the settings, which close themselves again.
 
-The clock has five settings: 24-hour time, seconds, a subline (date or your own words), theme preset, brightness. The focus face adds only its duration. Everything lives in `localStorage` and nowhere else.
+Five settings for the clock, one for the timer. All of it in `localStorage`, nowhere else.
 
-Once the page has loaded, the network is never needed again. A service worker caches everything, so the clock runs in airplane mode. No backend, no tracking, no CDN: every asset ships from the repo. Tailwind and shadcn-svelte for the UI; the digits are a 1.5 KB Roboto subset with equal widths, so nothing shifts as the numbers change.
+After the first load the app needs no network. A service worker caches everything, so it works in airplane mode. No backend, no tracking, no CDN, every asset ships from the repo.
 
 ## On the desk
 
@@ -36,6 +36,7 @@ A phone in a mount, the cable in, the screen never off. That is the whole setup.
 - A subline under the clock: the date, or a line of your own.
 - Settings in a drawer that drags, snaps and leaves on its own.
 - OLED care built in: pixel shift, brightness dim, everything black stays truly off.
+- Digits as a 1.5 KB Roboto subset with equal widths, so nothing shifts as the numbers change.
 
 ## Setting up the phone
 
