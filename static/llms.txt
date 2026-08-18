@@ -11,34 +11,45 @@ a settings overlay that dismisses itself. There is no visible control.
 
 ## Source files
 
-- src/routes/+page.svelte: the stage. Embla carousel over both faces, tick,
-  wake lock, OLED pixel shift, theme attribute, tap and long press handling,
-  the subline and the one time hint.
-- src/lib/FocusFace.svelte: the focus timer. Drift free countdown on the same
-  plates, tap starts and pauses (wired by the page), progress hairline,
+- src/routes/+page.svelte: the stage. Holds the tick, the wake lock, the OLED
+  pixel shift, the theme attribute, the pointer gestures and the one time hint,
+  and hands each face to the carousel as a snippet.
+- src/lib/components/FaceCarousel.svelte: embla over an array of faces, bound to
+  the current one. Owns the two way sync between scroll position and settings.
+- src/lib/components/ClockFace.svelte: the clock. Plates, the optional half size
+  seconds, the subline (date or own words) and the spoken time.
+- src/lib/components/FocusFace.svelte: the focus timer. Drift free countdown on
+  the same plates, tap starts and pauses (wired by the page), progress hairline,
   vibration at zero. Duration comes from the settings presets.
+- src/lib/components/FlipCard.svelte: one two digit card, four layers, CSS
+  keyframes, and the flip duration it hands to the CSS as --flip-ms. Honors
+  prefers-reduced-motion by jumping instead of flipping.
+- src/lib/components/SettingsOverlay.svelte: the long press overlay.
+  shadcn-svelte controls in a bespoke container: focus trap, Escape, idle auto
+  dismiss, bottom sheet on phones, centered panel on wide screens, two columns
+  when short.
 - src/routes/+layout.svelte: shell. Imports app.css, links icon and manifest.
 - src/routes/+layout.ts: prerender = true and ssr = false, so the build is a
   static shell despite adapter-node.
 - src/lib/clock.ts: time reading, formatting, and the drift free tick that
   recomputes the delay to the next boundary from Date on every step.
+- src/lib/gestures.ts: long press and swipe up on one pointer, coordinates in
+  and callbacks out, so it runs without a DOM and has its own tests.
 - src/lib/settings.svelte.ts: localStorage persistence, versioned migration
-  chain, and the reactive settings singleton built on $state getters.
-- src/lib/wakelock.ts: screen wake lock with re acquire on visibilitychange.
-- src/lib/FlipCard.svelte: one two digit card, four layers, CSS keyframes.
-  Honors prefers-reduced-motion by jumping instead of flipping.
-- src/lib/SettingsOverlay.svelte: the long press overlay. shadcn-svelte
-  controls in a bespoke container: focus trap, Escape, idle auto dismiss,
-  bottom sheet on phones, centered panel on wide screens, two columns when
-  short.
+  chain, and the settings singleton. Reads go through one derived, writes are
+  buffered and reach storage as a batch or when the page hides.
+- src/lib/wakelock.svelte.ts: screen wake lock, re taken whenever the document
+  becomes visible again.
 - src/lib/components/ui/, src/lib/utils.ts, src/routes/layout.css,
   components.json: the shadcn-svelte layer.
 - src/service-worker.ts: caches [...build, ...files] plus the prerendered shell.
   Cache first for assets, network with cache fallback otherwise. No skipWaiting.
-- src/app.css: size token inputs, theme presets via [data-theme], aspect ratio
-  media queries, sr-only, the digit @font-face.
+- src/app.css: size token inputs, theme presets via [data-theme], the shared
+  plate row, aspect ratio media queries, sr-only, the digit @font-face.
 - static/digits.woff2: Roboto at 600, digits only, 1.5 KB, equal advances.
-- src/lib/clock.test.ts, src/lib/settings.test.ts: vitest, pure logic only.
+- src/lib/*.test.ts: vitest, pure logic only (clock, gestures, settings).
+- e2e/clock.spec.ts: playwright against the production build. Faces, gestures,
+  settings, persistence, offline.
 
 ## Settings
 

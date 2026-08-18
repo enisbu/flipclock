@@ -60,7 +60,7 @@ The transition is disabled under `prefers-reduced-motion`. The shift still happe
 
 The spec calls this a request, not a guarantee. The lock screen, an incoming call, battery saver and a missing HTTPS context all revoke or refuse it. The API is also absent in some browsers. Every one of those cases is normal operation, not an error, so the failure path does nothing at all: it catches, clears the reference and lets the clock keep running. A clock that stops because a screen setting failed would be worse than a clock on a screen that dims.
 
-This is why the device side setup in `docs/android-setup.md` matters. The Wake Lock API is the convenient path. The Android developer option that keeps the screen on while charging is the reliable one.
+In practice the lock holds: an installed PWA on a charger with battery saver off keeps the screen on by itself. The device side setup in `docs/android-setup.md` covers the moments it does not, and the Android developer option that keeps the screen on while charging is the last resort rather than the first step.
 
 ## The offline model
 

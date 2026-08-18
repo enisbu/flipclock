@@ -45,7 +45,7 @@ Open [flip.enisdev.com](https://flip.enisdev.com) in Chrome, then install it fro
 | --- | --- | --- |
 | <img src="docs/screens/install-menu.jpg" alt="The Chrome menu with Install and create shortcut highlighted" width="240"> | <img src="docs/screens/install-dialog.jpg" alt="The install dialog showing the Flipclock icon" width="240"> | <img src="docs/screens/install-icon.jpg" alt="The installed Flipclock icon in the app drawer" width="240"> |
 
-An always-on display is a device setting, not a piece of code. In short: install the site as a PWA, enable "Stay awake" in the developer options, turn adaptive brightness off and fix it low, keep the phone on the cable. The full walkthrough, including OLED and heat notes: [docs/android-setup.md](docs/android-setup.md).
+The app holds a screen wake lock, so on most phones the display simply stays on. In short: install the site as a PWA, keep it on the cable, turn adaptive brightness off and fix it low. Only if the screen still sleeps is there a device setting to fall back on. The full walkthrough, including OLED and heat notes: [docs/android-setup.md](docs/android-setup.md).
 
 ## Development
 
